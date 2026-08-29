@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Envio de Currículo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <section class="card">
+        <div class="header">
+          <p class="eyebrow">Sistema de candidatura</p>
+          <h1>Enviar currículo para vaga</h1>
+        </div>
+
+        <form id="mail-form">
+          <div class="grid two-columns">
+            <label>
+              <span>Nome do Recrutador (opcional)</span>
+              <input id="recruiterName" name="recruiterName" type="text" placeholder="Ex.: Ana Silva" />
+            </label>
+
+            <label>
+              <span>E-mail do Destinatário</span>
+              <input id="recipientEmail" name="recipientEmail" type="email" placeholder="seu-email@empresa.com" required />
+            </label>
+          </div>
+
+          <div class="grid two-columns">
+            <label>
+              <span>Cc cópia oculta (opcional)</span>
+              <input id="bcc" name="bcc" type="text" placeholder="email1@dominio.com, email2@dominio.com" />
+            </label>
+
+            <label>
+              <span>Título do e-mail</span>
+              <input id="subject" name="subject" type="text" maxlength="200" required />
+            </label>
+          </div>
+
+          <div class="grid two-columns">
+            <label class="curriculum-field">
+              <span>Currículo (obrigatório)</span>
+              <input id="curriculumFile" name="curriculumFile" type="file" accept="application/pdf" required />
+              <div class="curriculum-actions">
+                <a id="curriculumPreview" href="https://drive.google.com/file/d/1OihWDBRijrK0tl9N9rTlKiTqUJq2eZg1/view?usp=sharing" target="_blank" rel="noopener">Abrir o currículo padrão ativo: JoaoVitorNogueira.pdf</a>
+              </div>
+            </label>
+          </div>
+
+          <label>
+            <span>Corpo do e-mail</span>
+            <textarea id="message" name="message" rows="14" required></textarea>
+          </label>
+
+          <p class="tags-help">
+            Tags disponíveis: [saudacao], [primeiroNome], [nomeCompleto], [linkCurriculo]
+          </p>
+
+          <div class="actions">
+            <button type="button" class="secondary" id="reset-defaults">Restaurar padrão</button>
+            <button type="submit" class="primary" id="submit-button">Enviar para ListaAuto</button>
+          </div>
+        </form>
+
+        <div id="status" class="status" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
