@@ -57,6 +57,12 @@ function getFirstName(value) {
   return name.split(' ')[0];
 }
 
+function formatFriendlyDateForStorage(date = new Date()) {
+  const d = new Date(date);
+  const pad = (value) => String(value).padStart(2, '0');
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
 function replaceTemplateTags(text) {
   const fullName = normalizeText(fields.recruiterName.value);
   const firstName = getFirstName(fields.recruiterName.value);
@@ -109,7 +115,7 @@ function buildPayload() {
   const finalMessage = replaceTemplateTags(fields.message.value.trim());
 
   return {
-    'Data': new Date().toISOString(),
+    'Data': formatFriendlyDateForStorage(new Date()),
     'Nome do Recrutador': fields.recruiterName.value.trim(),
     'E-mail do Destinatário': fields.recipientEmail.value.trim(),
     'Cco cópia oculta': fields.bcc.value.trim(),
@@ -123,12 +129,6 @@ async function submitForm(event) {
   event.preventDefault();
 
   const payload = buildPayload();
-
-  if (!payload['E-mail do Destinatário']) {
-    setStatus('Informe o e-mail do destinatário.', 'error');
-    fields.recipientEmail.focus();
-    return;
-  }
 
   if (!payload['Título do e-mail']) {
     setStatus('Informe o título do e-mail.', 'error');

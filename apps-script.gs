@@ -46,6 +46,43 @@ function ensureSheetHeaders(sheet) {
   return firstRow;
 }
 
+function normalizeDateValue(value) {
+  if (value === undefined || value === null || value === '') {
+    return new Date();
+  }
+
+  if (value instanceof Date) {
+    return value;
+  }
+
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed;
+  }
+
+  if (typeof value === 'string' && /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/.test(value.trim())) {
+    const [datePart, timePart] = value.trim().split(' ');
+    const [day, month, year] = datePart.split('/').map(Number);
+    const [hours, minutes, seconds] = timePart.split(':').map(Number);
+    return new Date(year, month - 1, day, hours, minutes, seconds);
+  }
+
+  return new Date();
+}
+
+function formatFriendlyDate(value) {
+  const date = normalizeDateValue(value);
+  const pad = (n) => String(n).padStart(2, '0');
+  const day = pad(date.getDate());
+  const month = pad(date.getMonth() + 1);
+  const year = date.getFullYear();
+  const hour = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  const seconds = pad(date.getSeconds());
+
+  return `${day}/${month}/${year} ${hour}:${minutes}:${seconds}`;
+}
+
 function toRowByHeader(sheet, payload) {
   const headers = ensureSheetHeaders(sheet);
   const normalizedIndex = {};
@@ -56,7 +93,7 @@ function toRowByHeader(sheet, payload) {
 
   const row = Array(headers.length).fill('');
   const fieldMap = {
-    'data': payload['Data'] || payload.data || new Date(),
+    'data': formatFriendlyDate(payload['Data'] || payload.data || new Date()),
     'nome do recrutador': payload['Nome do Recrutador'] || payload.recruiterName || '',
     'e-mail do destinatário': payload['E-mail do Destinatário'] || payload.recipientEmail || '',
     'cco cópia oculta': payload['Cco cópia oculta'] || payload.bcc || '',
