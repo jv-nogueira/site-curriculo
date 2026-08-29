@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Envio de Currículo</title>
+    <title>Envio de mensagem</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -14,7 +14,7 @@
       <section class="card">
         <div class="header">
           <p class="eyebrow">Sistema de candidatura</p>
-          <h1>Enviar currículo para vaga</h1>
+          <h1>Enviar mensagem para vaga</h1>
         </div>
 
         <form id="mail-form">
@@ -42,15 +42,10 @@
             </label>
           </div>
 
-          <div class="grid two-columns">
-            <label class="curriculum-field">
-              <span>Currículo (obrigatório)</span>
-              <input id="curriculumFile" name="curriculumFile" type="file" accept="application/pdf" required />
-              <div class="curriculum-actions">
-                <a id="curriculumPreview" href="https://drive.google.com/file/d/1OihWDBRijrK0tl9N9rTlKiTqUJq2eZg1/view?usp=sharing" target="_blank" rel="noopener">Abrir o currículo padrão ativo: JoaoVitorNogueira.pdf</a>
-              </div>
-            </label>
-          </div>
+          <label class="curriculum-field">
+            <span>Currículo</span>
+            <input id="curriculumFile" name="curriculumFile" type="file" accept="application/pdf" required />
+          </label>
 
           <label>
             <span>Corpo do e-mail</span>
@@ -58,7 +53,7 @@
           </label>
 
           <p class="tags-help">
-            Tags disponíveis: [saudacao], [primeiroNome], [nomeCompleto], [linkCurriculo]
+            Tags disponíveis: [saudacao], [primeiroNome], [nomeCompleto]
           </p>
 
           <div class="actions">

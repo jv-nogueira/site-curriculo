@@ -1,5 +1,3 @@
-const DEFAULT_CV_URL = 'https://drive.google.com/file/d/1OihWDBRijrK0tl9N9rTlKiTqUJq2eZg1/view?usp=sharing';
-const DEFAULT_CV_NAME = 'JoaoVitorNogueira.pdf';
 const DEFAULT_SUBJECT = 'Candidatura - João Vitor Nogueira';
 const DEFAULT_MESSAGE = `Olá [primeiroNome], [saudacao]
 
@@ -7,12 +5,11 @@ Tudo bem?
 
 Meu nome é João Vitor Nogueira e trabalho focado em automação de TI.
 
-Tenho experiência em criar crawlers, scrapers e automações (RPA) que reduzem o trabalho manual. Encaminho meu currículo em anexo para sua análise.
+Tenho experiência em criar crawlers, scrapers e automações (RPA) que reduzem o trabalho manual.
 
 Você pode consultar mais detalhes sobre meus projetos e experiências nos links abaixo:
 LinkedIn: https://www.linkedin.com/in/nogueira-jv/
 GitHub: https://github.com/jv-nogueira
-Currículo: [linkCurriculo]
 
 Fico à disposição para esclarecimentos adicionais ou para uma eventual entrevista.
 
@@ -22,7 +19,7 @@ Atenciosamente,
 João Vitor Nogueira
 (11) 9 7776-8397`;
 
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzyjJBQAz_Z0hZs3GJ29w8zGRdvC4T7xzxoYVrvlqjbbaeKcYAoRHlnnuC0J5ouTBxrow/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby4cL2g8uEAHLgwsF02k88AdsRAmgbBO91uUq-cfmhJzIZrwtRhk4VtLSxmmW2Sg0uOoQ/exec';
 
 const form = document.getElementById('mail-form');
 const statusBox = document.getElementById('status');
@@ -36,7 +33,6 @@ const fields = {
   subject: document.getElementById('subject'),
   message: document.getElementById('message'),
   curriculumFile: document.getElementById('curriculumFile'),
-  curriculumPreview: document.getElementById('curriculumPreview'),
 };
 
 function setStatus(message, type) {
@@ -64,43 +60,12 @@ function getFirstName(value) {
 function replaceTemplateTags(text) {
   const fullName = normalizeText(fields.recruiterName.value);
   const firstName = getFirstName(fields.recruiterName.value);
-  const curriculumLink = getCurriculumValue();
   const greeting = getGreeting();
 
   return String(text || '')
     .replace(/\[saudacao\]/gi, greeting)
     .replace(/\[primeiroNome\]/gi, firstName)
-    .replace(/\[nomeCompleto\]/gi, fullName || 'recrutador')
-    .replace(/\[linkCurriculo\]/gi, curriculumLink)
-    .replace(/\[linkDoCurriculo\]/gi, curriculumLink);
-}
-
-function getCurriculumValue() {
-  if (fields.curriculumFile.files && fields.curriculumFile.files.length > 0) {
-    return URL.createObjectURL(fields.curriculumFile.files[0]);
-  }
-  return DEFAULT_CV_URL;
-}
-
-function getCurriculumLabel() {
-  if (fields.curriculumFile.files && fields.curriculumFile.files.length > 0) {
-    return fields.curriculumFile.files[0].name;
-  }
-  return DEFAULT_CV_NAME;
-}
-
-function updateCurriculumPreview() {
-  const hasSelectedFile = fields.curriculumFile.files && fields.curriculumFile.files.length > 0;
-
-  if (hasSelectedFile) {
-    const fileUrl = URL.createObjectURL(fields.curriculumFile.files[0]);
-    fields.curriculumPreview.href = fileUrl;
-    fields.curriculumPreview.textContent = `Abrir o currículo padrão ativo: ${fields.curriculumFile.files[0].name}`;
-    return;
-  }
-
-  fields.curriculumPreview.href = DEFAULT_CV_URL;
-  fields.curriculumPreview.textContent = `Abrir o currículo padrão ativo: ${DEFAULT_CV_NAME}`;
+    .replace(/\[nomeCompleto\]/gi, fullName || 'recrutador');
 }
 
 function loadSavedValues() {
@@ -109,9 +74,6 @@ function loadSavedValues() {
   if (stored) {
     const parsed = JSON.parse(stored);
     Object.entries(fields).forEach(([key, element]) => {
-      if (key === 'curriculumFile' || key === 'curriculumPreview' || key === 'curriculumStatus' || key === 'clearCvButton') {
-        return;
-      }
       element.value = parsed[key] ?? '';
     });
     return;
@@ -119,7 +81,6 @@ function loadSavedValues() {
 
   fields.subject.value = DEFAULT_SUBJECT;
   fields.message.value = DEFAULT_MESSAGE;
-  updateCurriculumPreview();
 }
 
 function saveValues() {
@@ -129,8 +90,6 @@ function saveValues() {
     bcc: fields.bcc.value.trim(),
     subject: fields.subject.value.trim(),
     message: fields.message.value.trim(),
-    curriculumFileName: getCurriculumLabel(),
-    curriculumUrl: getCurriculumValue(),
   };
 
   localStorage.setItem('curriculoForm', JSON.stringify(payload));
@@ -142,8 +101,6 @@ function restoreDefaults() {
   fields.recruiterName.value = '';
   fields.recipientEmail.value = '';
   fields.bcc.value = '';
-  fields.curriculumFile.value = '';
-  updateCurriculumPreview();
   localStorage.removeItem('curriculoForm');
   setStatus('Mensagem padrão restaurada.', 'success');
 }
@@ -158,8 +115,7 @@ function buildPayload() {
     'Cco cópia oculta': fields.bcc.value.trim(),
     'Corpo do e-mail': finalMessage,
     'Título do e-mail': fields.subject.value.trim(),
-    'Currículo': getCurriculumLabel(),
-    'URL do currículo': getCurriculumValue(),
+    'Currículo': fields.curriculumFile.files && fields.curriculumFile.files.length ? fields.curriculumFile.files[0].name : '',
   };
 }
 
@@ -187,7 +143,7 @@ async function submitForm(event) {
   }
 
   if (!fields.curriculumFile.files || fields.curriculumFile.files.length === 0) {
-    setStatus('Selecione o currículo ou use o padrão antes de enviar.', 'error');
+    setStatus('Selecione um currículo antes de enviar.', 'error');
     fields.curriculumFile.focus();
     return;
   }
@@ -197,12 +153,19 @@ async function submitForm(event) {
   setStatus('Enviando dados para a aba ListaAuto...', 'success');
 
   try {
+    const formData = new FormData();
+    formData.append('Data', payload['Data']);
+    formData.append('Nome do Recrutador', payload['Nome do Recrutador']);
+    formData.append('E-mail do Destinatário', payload['E-mail do Destinatário']);
+    formData.append('Cco cópia oculta', payload['Cco cópia oculta']);
+    formData.append('Corpo do e-mail', payload['Corpo do e-mail']);
+    formData.append('Título do e-mail', payload['Título do e-mail']);
+    formData.append('Currículo', payload['Currículo']);
+    formData.append('curriculumFile', fields.curriculumFile.files[0], fields.curriculumFile.files[0].name);
+
     const response = await fetch(GOOGLE_SCRIPT_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
+      body: formData,
     });
 
     const rawText = await response.text();
@@ -237,9 +200,5 @@ async function submitForm(event) {
 form.addEventListener('input', saveValues);
 form.addEventListener('submit', submitForm);
 resetButton.addEventListener('click', restoreDefaults);
-fields.curriculumFile.addEventListener('change', () => {
-  updateCurriculumPreview();
-  saveValues();
-});
 
 loadSavedValues();
