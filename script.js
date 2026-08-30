@@ -19,7 +19,7 @@ Atenciosamente,
 João Vitor Nogueira
 (11) 9 7776-8397`;
 
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby4cL2g8uEAHLgwsF02k88AdsRAmgbBO91uUq-cfmhJzIZrwtRhk4VtLSxmmW2Sg0uOoQ/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwiXgDosPeWe6nDbuKi9Qi_nbxHedYV_fDra33Oi7pBD9o1p1s_0wAaNobJQqi7kbtxPQ/exec';
 const DEFAULT_CURRICULUM_NAME = 'JoaoVitor.pdf';
 const DEFAULT_CURRICULUM_PATH = './JoaoVitor.pdf';
 
@@ -28,8 +28,20 @@ const statusBox = document.getElementById('status');
 const submitButton = document.getElementById('submit-button');
 const resetButton = document.getElementById('reset-defaults');
 const previewCurriculumButton = document.getElementById('preview-curriculum');
+const previewEmailBtn = document.getElementById('preview-email-btn');
 const selectedFileNameEl = document.getElementById('selected-file-name');
 const fileBadgeEl = document.getElementById('file-badge');
+
+const emailModal = document.getElementById('email-modal');
+const modalCloseBtn = document.getElementById('modal-close');
+const modalCancelBtn = document.getElementById('modal-cancel-btn');
+const modalSendBtn = document.getElementById('modal-send-btn');
+const modalToEl = document.getElementById('modal-to');
+const modalBccRow = document.getElementById('modal-bcc-row');
+const modalBccEl = document.getElementById('modal-bcc');
+const modalSubjectEl = document.getElementById('modal-subject');
+const modalAttachmentEl = document.getElementById('modal-attachment');
+const modalBodyEl = document.getElementById('modal-body');
 
 const fields = {
   recruiterName: document.getElementById('recruiterName'),
@@ -51,9 +63,9 @@ function normalizeText(value) {
 
 function getGreeting() {
   const hour = new Date().getHours();
-  if (hour < 12) return 'bom dia';
-  if (hour < 18) return 'boa tarde';
-  return 'boa noite';
+  if (hour < 12) return 'bom dia!';
+  if (hour < 18) return 'boa tarde!';
+  return 'boa noite!';
 }
 
 function getFirstName(value) {
@@ -183,10 +195,28 @@ function buildPayload() {
   };
 }
 
+function fileToBase64(fileOrBlob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64String = reader.result.split(',')[1];
+      resolve(base64String);
+    };
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(fileOrBlob);
+  });
+}
+
 async function submitForm(event) {
   event.preventDefault();
 
   const payload = buildPayload();
+
+  if (!payload['E-mail do Destinatário']) {
+    setStatus('Informe o e-mail do destinatário.', 'error');
+    fields.recipientEmail.focus();
+    return;
+  }
 
   if (!payload['Título do e-mail']) {
     setStatus('Informe o título do e-mail.', 'error');
@@ -201,36 +231,42 @@ async function submitForm(event) {
   }
 
   submitButton.disabled = true;
-  submitButton.textContent = 'Enviando...';
-  setStatus('Enviando dados para a aba ListaAuto...', 'success');
+  submitButton.textContent = 'Enviando e-mail...';
+  setStatus('Preparando e disparando o e-mail pelo Gmail...', 'success');
 
   try {
-    const formData = new FormData();
-    formData.append('Data', payload['Data']);
-    formData.append('Nome do Recrutador', payload['Nome do Recrutador']);
-    formData.append('E-mail do Destinatário', payload['E-mail do Destinatário']);
-    formData.append('Cco cópia oculta', payload['Cco cópia oculta']);
-    formData.append('Corpo do e-mail', payload['Corpo do e-mail']);
-    formData.append('Título do e-mail', payload['Título do e-mail']);
-    formData.append('Currículo', payload['Currículo']);
+    let base64Data = null;
+    let fileName = payload['Currículo'] || DEFAULT_CURRICULUM_NAME;
 
     if (fields.curriculumFile.files && fields.curriculumFile.files.length > 0) {
-      formData.append('curriculumFile', fields.curriculumFile.files[0], fields.curriculumFile.files[0].name);
+      base64Data = await fileToBase64(fields.curriculumFile.files[0]);
+      fileName = fields.curriculumFile.files[0].name;
     } else {
       try {
         const fileResp = await fetch(DEFAULT_CURRICULUM_PATH);
         if (fileResp.ok) {
           const blob = await fileResp.blob();
-          formData.append('curriculumFile', blob, DEFAULT_CURRICULUM_NAME);
+          base64Data = await fileToBase64(blob);
         }
       } catch (e) {
-        console.warn('Não foi possível anexar blob do PDF:', e);
+        console.warn('Não foi possível codificar o PDF local:', e);
       }
     }
 
+    const requestData = {
+      recipientEmail: payload['E-mail do Destinatário'],
+      recruiterName: payload['Nome do Recrutador'],
+      bcc: payload['Cco cópia oculta'],
+      subject: payload['Título do e-mail'],
+      message: payload['Corpo do e-mail'],
+      fileName: fileName,
+      fileData: base64Data,
+      fileMimeType: 'application/pdf'
+    };
+
     const response = await fetch(GOOGLE_SCRIPT_URL, {
       method: 'POST',
-      body: formData,
+      body: JSON.stringify(requestData),
     });
 
     const rawText = await response.text();
@@ -248,17 +284,17 @@ async function submitForm(event) {
     }
 
     if (!response.ok || result.ok === false) {
-      throw new Error(result.error || result.message || 'Não foi possível registrar os dados.');
+      throw new Error(result.error || result.message || 'Não foi possível enviar o e-mail.');
     }
 
     saveValues();
-    setStatus('Dados enviados com sucesso para a aba ListaAuto.', 'success');
+    setStatus('E-mail enviado com sucesso e registrado na aba ListaAuto!', 'success');
   } catch (error) {
     console.error(error);
-    setStatus(error.message || 'Erro ao registrar os dados.', 'error');
+    setStatus(error.message || 'Erro ao disparar o e-mail.', 'error');
   } finally {
     submitButton.disabled = false;
-    submitButton.textContent = 'Enviar para ListaAuto';
+    submitButton.textContent = 'Enviar Candidatura';
   }
 }
 
@@ -272,15 +308,95 @@ function previewCurriculum() {
   }
 }
 
+function openEmailPreview() {
+  const payload = buildPayload();
+  
+  if (modalToEl) {
+    modalToEl.textContent = payload['E-mail do Destinatário'] || '(E-mail não informado ainda)';
+  }
+  
+  if (modalBccRow && modalBccEl) {
+    if (payload['Cco cópia oculta']) {
+      modalBccEl.textContent = payload['Cco cópia oculta'];
+      modalBccRow.style.display = 'flex';
+    } else {
+      modalBccRow.style.display = 'none';
+    }
+  }
+  
+  if (modalSubjectEl) {
+    modalSubjectEl.textContent = payload['Título do e-mail'] || '(Sem assunto informado)';
+  }
+  
+  if (modalAttachmentEl) {
+    modalAttachmentEl.textContent = `📎 ${payload['Currículo'] || DEFAULT_CURRICULUM_NAME}`;
+  }
+  
+  if (modalBodyEl) {
+    modalBodyEl.textContent = payload['Corpo do e-mail'] || '(Mensagem vazia)';
+  }
+  
+  if (emailModal) {
+    emailModal.classList.add('active');
+    emailModal.setAttribute('aria-hidden', 'false');
+  }
+}
+
+function closeEmailPreview() {
+  if (emailModal) {
+    emailModal.classList.remove('active');
+    emailModal.setAttribute('aria-hidden', 'true');
+  }
+}
+
 form.addEventListener('input', saveValues);
 form.addEventListener('submit', submitForm);
 resetButton.addEventListener('click', restoreDefaults);
+
 if (fields.curriculumFile) {
   fields.curriculumFile.addEventListener('change', updateCurriculumDisplay);
 }
+
 if (previewCurriculumButton) {
   previewCurriculumButton.addEventListener('click', previewCurriculum);
 }
+
+if (previewEmailBtn) {
+  previewEmailBtn.addEventListener('click', openEmailPreview);
+}
+
+if (modalCloseBtn) {
+  modalCloseBtn.addEventListener('click', closeEmailPreview);
+}
+
+if (modalCancelBtn) {
+  modalCancelBtn.addEventListener('click', closeEmailPreview);
+}
+
+if (modalSendBtn) {
+  modalSendBtn.addEventListener('click', () => {
+    closeEmailPreview();
+    if (form.requestSubmit) {
+      form.requestSubmit();
+    } else {
+      submitButton.click();
+    }
+  });
+}
+
+if (emailModal) {
+  emailModal.addEventListener('click', (e) => {
+    if (e.target === emailModal) {
+      closeEmailPreview();
+    }
+  });
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && emailModal && emailModal.classList.contains('active')) {
+    closeEmailPreview();
+  }
+});
 
 loadSavedValues();
 loadDefaultCurriculum();

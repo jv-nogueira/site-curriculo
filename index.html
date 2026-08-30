@@ -77,13 +77,49 @@
 
           <div class="actions">
             <button type="button" class="secondary" id="reset-defaults">Restaurar padrão</button>
-            <button type="submit" class="primary" id="submit-button">Enviar para ListaAuto</button>
+            <div class="actions-right">
+              <button type="button" class="secondary" id="preview-email-btn">👁️ Pré-visualizar E-mail</button>
+              <button type="submit" class="primary" id="submit-button">Enviar Candidatura</button>
+            </div>
           </div>
         </form>
 
         <div id="status" class="status" aria-live="polite"></div>
       </section>
     </main>
+
+    <!-- Modal Simulador de E-mail -->
+    <div id="email-modal" class="modal-overlay" aria-hidden="true">
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-header">
+          <h2 id="modal-title">📧 Pré-visualização do E-mail</h2>
+          <button type="button" class="modal-close-btn" id="modal-close" aria-label="Fechar">&times;</button>
+        </div>
+        <div class="modal-email-meta">
+          <div class="meta-row">
+            <span class="meta-label">Para:</span>
+            <span class="meta-value" id="modal-to"></span>
+          </div>
+          <div class="meta-row" id="modal-bcc-row">
+            <span class="meta-label">Cco:</span>
+            <span class="meta-value" id="modal-bcc"></span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Assunto:</span>
+            <span class="meta-value" id="modal-subject"></span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Anexo:</span>
+            <span class="meta-value" id="modal-attachment"></span>
+          </div>
+        </div>
+        <div class="modal-email-body" id="modal-body"></div>
+        <div class="modal-actions">
+          <button type="button" class="secondary" id="modal-cancel-btn">Voltar e Editar</button>
+          <button type="button" class="primary" id="modal-send-btn">Enviar Candidatura</button>
+        </div>
+      </div>
+    </div>
 
     <script src="script.js"></script>
   </body>

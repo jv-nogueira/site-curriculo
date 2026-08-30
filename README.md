@@ -1,35 +1,39 @@
-# Site de envio de currículo
+# Site de Envio de Currículo e Disparo Automatizado de Candidaturas
 
-Este projeto cria uma página simples para preencher os dados do e-mail e enviar para a aba `ListaAuto` da planilha conectada ao Google Apps Script.
+Este projeto disponibiliza uma interface web para preencher, personalizar e disparar e-mails de candidatura com currículo anexado diretamente através da sua conta do Gmail via **Google Apps Script**, além de registrar o histórico de envio na planilha conectada.
 
-## Estrutura
+## 🚀 Funcionalidades
 
-- `index.html`: tela do formulário
-- `styles.css`: visual da interface
-- `script.js`: carregamento dos valores padrão e envio do formulário
-- `apps-script.gs`: exemplo do backend para o Apps Script
+- **Disparo Direto pelo Gmail:** O Google Apps Script (`GmailApp.sendEmail`) envia o e-mail real com o PDF anexado e suporte a Cco.
+- **Log Simplificado no Google Sheets:** Registra na aba `ListaAuto` apenas as colunas essenciais: `Data` (DD/MM/AAAA), `Nome` e `E-mail`.
+- **Currículo Padrão e Personalizado:** Carrega automaticamente o arquivo padrão `JoaoVitor.pdf` com visualizador em nova aba e permite anexar outros PDFs.
+- **Tags Dinâmicas:** Substitui automaticamente `[saudacao]` (bom dia/boa tarde/boa noite), `[primeiroNome]` e `[nomeCompleto]`.
+- **Armazenamento de Rascunho:** Salva alterações no `localStorage` do navegador para evitar perda de dados.
 
-## Como usar
+## 📁 Estrutura
 
-1. Abra o arquivo `index.html` no navegador para testar localmente.
-2. Ajuste a URL do Apps Script no arquivo `script.js` com a URL do seu deployment.
-3. Faça o deploy do projeto em GitHub Pages.
-4. Garanta que o Apps Script tenha a função `doPost` para receber os dados e gravar na aba `ListaAuto`.
+- `index.html`: interface do formulário de candidatura
+- `styles.css`: estilos visuais responsivos
+- `script.js`: lógica do formulário, conversão do PDF para Base64 e integração com o backend
+- `apps-script.gs`: código do backend para o Google Apps Script (GmailApp + Sheets)
+- `JoaoVitor.pdf`: currículo padrão utilizado
 
-## Exemplo de backend no Google Apps Script
+## ⚙️ Como Configurar o Backend no Google Apps Script
 
-Copie o conteúdo do arquivo `apps-script.gs` para o editor do Apps Script da planilha.
+1. Abra a sua planilha do Google Sheets.
+2. Vá no menu superior em **Extensões > Apps Script**.
+3. Copie o conteúdo do arquivo [`apps-script.gs`](apps-script.gs) e cole no editor do Apps Script (substituindo o conteúdo existente).
+4. Salve o projeto (`Ctrl + S`).
+5. Clique em **Implantar > Gerenciar implantações** (ou **Nova implantação**):
+   - Tipo: **App da Web** (Web App)
+   - Executar como: **Eu (seu e-mail)**
+   - Quem tem acesso: **Qualquer pessoa** (Anyone)
+6. Clique em **Implantar**, autorize as permissões da sua conta do Google e copie a **URL do App da Web** (`https://script.google.com/macros/s/.../exec`).
+7. Cole a URL na constante `GOOGLE_SCRIPT_URL` dentro do arquivo [`script.js`](script.js).
 
-Depois, faça o deploy como `Web App` com acesso `Qualquer pessoa` ou `Qualquer usuário da conta` conforme necessário.
+## 🌐 Publicação no GitHub Pages
 
-## Publicação no GitHub Pages
-
-1. Crie um repositório no GitHub.
-2. Faça upload dos arquivos `index.html`, `styles.css`, `script.js`.
-3. No GitHub, vá em `Settings > Pages`.
-4. Selecione a branch principal e a pasta raiz.
-5. Salve e aguarde a publicação.
-
-## Observação importante
-
-Esse site é frontend estático. Ele envia os dados para o Apps Script, que grava na planilha. A autenticação por e-mail liberado pode ser adicionada depois, conforme planejado.
+1. Suba as alterações para o repositório no GitHub (`git push`).
+2. No GitHub, vá em **Settings > Pages**.
+3. Selecione a branch principal (`main` ou `master`) e a pasta raiz (`/root`).
+4. Salve e acesse a URL gerada pelo GitHub Pages.

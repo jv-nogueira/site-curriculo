@@ -1,29 +1,30 @@
-function normalizeHeader(value) {
-  return String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+/**
+ * Google Apps Script - Disparo de E-mails de Candidatura e Log Simplificado
+ * 
+ * Configuração:
+ * 1. Cole este código no editor do Apps Script da planilha (Extensões > Apps Script).
+ * 2. Clique em "Implantar" > "Gerenciar implantações" > Editar (ícone lápis) > Nova versão > Implantar.
+ * 3. Garanta que o acesso esteja como: "Qualquer pessoa" (Anyone).
+ */
+
+function autorizarGmail() {
+  GmailApp.getDrafts();
+  SpreadsheetApp.getActiveSpreadsheet();
+  Logger.log('Permissão concedida com sucesso!');
 }
 
-function readMultipartValues(e) {
-  const source = {};
+function formatDateOnly(date) {
+  const d = date instanceof Date ? date : new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const day = pad(d.getDate());
+  const month = pad(d.getMonth() + 1);
+  const year = d.getFullYear();
 
-  Object.keys(e.parameter || {}).forEach((key) => {
-    const values = e.parameter[key];
-    source[key] = Array.isArray(values) ? values[0] : values;
-  });
-
-  return source;
+  return `${day}/${month}/${year}`;
 }
 
 function ensureSheetHeaders(sheet) {
-  const expectedHeaders = [
-    'Data',
-    'Nome do Recrutador',
-    'E-mail do Destinatário',
-    'Cco cópia oculta',
-    'Corpo do e-mail',
-    'Título do e-mail',
-    'Currículo'
-  ];
-
+  const expectedHeaders = ['Data', 'Nome', 'E-mail'];
   const currentValues = sheet.getDataRange().getValues();
   const firstRow = currentValues[0] || [];
 
@@ -32,89 +33,69 @@ function ensureSheetHeaders(sheet) {
     return expectedHeaders;
   }
 
-  if (firstRow.length < expectedHeaders.length) {
-    const updatedHeaders = firstRow.slice();
-    expectedHeaders.forEach((header, index) => {
-      if (index >= updatedHeaders.length) {
-        updatedHeaders.push(header);
-      }
-    });
-    sheet.getRange(1, 1, 1, updatedHeaders.length).setValues([updatedHeaders]);
-    return updatedHeaders;
-  }
-
   return firstRow;
 }
 
-function normalizeDateValue(value) {
-  if (value === undefined || value === null || value === '') {
-    return new Date();
-  }
-
-  if (value instanceof Date) {
-    return value;
-  }
-
-  const parsed = new Date(value);
-  if (!Number.isNaN(parsed.getTime())) {
-    return parsed;
-  }
-
-  if (typeof value === 'string' && /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/.test(value.trim())) {
-    const [datePart, timePart] = value.trim().split(' ');
-    const [day, month, year] = datePart.split('/').map(Number);
-    const [hours, minutes, seconds] = timePart.split(':').map(Number);
-    return new Date(year, month - 1, day, hours, minutes, seconds);
-  }
-
-  return new Date();
+function cleanEmailList(emailString) {
+  if (!emailString) return '';
+  return String(emailString)
+    .split(/[,;]/)
+    .map(e => e.trim())
+    .filter(e => e.length > 0)
+    .join(',');
 }
 
-function formatFriendlyDate(value) {
-  const date = normalizeDateValue(value);
-  const pad = (n) => String(n).padStart(2, '0');
-  const day = pad(date.getDate());
-  const month = pad(date.getMonth() + 1);
-  const year = date.getFullYear();
-  const hour = pad(date.getHours());
-  const minutes = pad(date.getMinutes());
-  const seconds = pad(date.getSeconds());
+function sendApplicationEmail(payload) {
+  const rawRecipient = payload.recipientEmail || payload['E-mail do Destinatário'] || '';
+  const recipient = cleanEmailList(rawRecipient);
+  const subject = String(payload.subject || payload['Título do e-mail'] || '').trim();
+  const body = String(payload.message || payload['Corpo do e-mail'] || '').trim();
+  const rawBcc = payload.bcc || payload['Cco cópia oculta'] || '';
+  const bcc = cleanEmailList(rawBcc);
 
-  return `${day}/${month}/${year} ${hour}:${minutes}:${seconds}`;
-}
+  if (!recipient) {
+    throw new Error('E-mail do destinatário inválido ou não informado.');
+  }
 
-function toRowByHeader(sheet, payload) {
-  const headers = ensureSheetHeaders(sheet);
-  const normalizedIndex = {};
+  if (!subject) {
+    throw new Error('Título do e-mail não informado.');
+  }
 
-  headers.forEach((header, index) => {
-    normalizedIndex[normalizeHeader(header)] = index;
-  });
+  if (!body) {
+    throw new Error('Corpo do e-mail não informado.');
+  }
 
-  const row = Array(headers.length).fill('');
-  const fieldMap = {
-    'data': formatFriendlyDate(payload['Data'] || payload.data || new Date()),
-    'nome do recrutador': payload['Nome do Recrutador'] || payload.recruiterName || '',
-    'e-mail do destinatário': payload['E-mail do Destinatário'] || payload.recipientEmail || '',
-    'cco cópia oculta': payload['Cco cópia oculta'] || payload.bcc || '',
-    'corpo do e-mail': payload['Corpo do e-mail'] || payload.message || '',
-    'título do e-mail': payload['Título do e-mail'] || payload.subject || '',
-    'currículo': payload['Currículo'] || payload.curriculum || ''
+  const options = {
+    name: 'João Vitor Nogueira'
   };
+  
+  if (bcc) {
+    options.bcc = bcc;
+  }
 
-  Object.entries(fieldMap).forEach(([key, value]) => {
-    const index = normalizedIndex[key];
-    if (index !== undefined) {
-      row[index] = value;
+  // Se veio arquivo PDF codificado em Base64, anexa ao e-mail
+  if (payload.fileData) {
+    try {
+      const decoded = Utilities.base64Decode(payload.fileData);
+      const fileName = payload.fileName || 'JoaoVitor.pdf';
+      const mimeType = payload.fileMimeType || 'application/pdf';
+      const attachment = Utilities.newBlob(decoded, mimeType, fileName);
+      options.attachments = [attachment];
+    } catch (err) {
+      Logger.log('Erro ao anexar arquivo: ' + err);
     }
-  });
+  }
 
-  return row;
+  // Envia o e-mail pela sua conta do Gmail
+  GmailApp.sendEmail(recipient, subject, body, options);
 }
 
 function doGet() {
   return ContentService
-    .createTextOutput(JSON.stringify({ ok: true, message: 'API pronta para receber dados.' }))
+    .createTextOutput(JSON.stringify({ 
+      ok: true, 
+      message: 'API do Sistema de Candidatura ativa e pronta para envio.' 
+    }))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
@@ -123,28 +104,43 @@ function doPost(e) {
     const event = e || {};
     let payload = {};
 
-    if (event.parameter && Object.keys(event.parameter).length) {
-      payload = readMultipartValues(event);
-    } else if (event.postData && event.postData.contents) {
-      payload = JSON.parse(event.postData.contents || '{}');
+    if (event.postData && event.postData.contents) {
+      try {
+        payload = JSON.parse(event.postData.contents);
+      } catch (parseError) {
+        payload = event.parameter || {};
+      }
+    } else if (event.parameter) {
+      payload = event.parameter;
     }
 
-    if (event.files && event.files.length) {
-      payload['Currículo'] = event.files[0].getName();
-    }
+    // 1. Disparar o e-mail através do Gmail
+    sendApplicationEmail(payload);
 
+    // 2. Registrar log simplificado na aba ListaAuto (Data, Nome, E-mail)
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = spreadsheet.getSheetByName('ListaAuto') || spreadsheet.insertSheet('ListaAuto');
 
-    const row = toRowByHeader(sheet, payload);
-    sheet.appendRow(row);
+    ensureSheetHeaders(sheet);
+
+    const dataFormatada = formatDateOnly(new Date());
+    const nome = payload.recruiterName || payload['Nome do Recrutador'] || '';
+    const email = payload.recipientEmail || payload['E-mail do Destinatário'] || '';
+
+    sheet.appendRow([dataFormatada, nome, email]);
 
     return ContentService
-      .createTextOutput(JSON.stringify({ ok: true, message: 'Dados salvos com sucesso na aba ListaAuto.' }))
+      .createTextOutput(JSON.stringify({ 
+        ok: true, 
+        message: 'E-mail enviado e registrado com sucesso!' 
+      }))
       .setMimeType(ContentService.MimeType.JSON);
   } catch (error) {
     return ContentService
-      .createTextOutput(JSON.stringify({ ok: false, error: error.toString() }))
+      .createTextOutput(JSON.stringify({ 
+        ok: false, 
+        error: error.toString() 
+      }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
