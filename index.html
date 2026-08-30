@@ -42,10 +42,29 @@
             </label>
           </div>
 
-          <label class="curriculum-field">
-            <span>Currículo</span>
-            <input id="curriculumFile" name="curriculumFile" type="file" accept="application/pdf" required />
-          </label>
+          <div class="curriculum-field">
+            <div class="curriculum-header">
+              <label><span>Currículo</span></label>
+              <button type="button" class="preview-btn" id="preview-curriculum" title="Visualizar currículo em nova aba">
+                👁️ Visualizar PDF
+              </button>
+            </div>
+            <div class="curriculum-box">
+              <div class="curriculum-info">
+                <span class="file-icon">📄</span>
+                <div class="file-details">
+                  <span class="file-name" id="selected-file-name">JoaoVitor.pdf</span>
+                  <span class="file-badge" id="file-badge">Padrão</span>
+                </div>
+              </div>
+              <div class="curriculum-actions-btns">
+                <label for="curriculumFile" class="change-file-btn">
+                  📁 Alterar arquivo
+                </label>
+                <input id="curriculumFile" name="curriculumFile" type="file" accept="application/pdf" class="visually-hidden" />
+              </div>
+            </div>
+          </div>
 
           <label>
             <span>Corpo do e-mail</span>

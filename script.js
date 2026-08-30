@@ -20,12 +20,16 @@ João Vitor Nogueira
 (11) 9 7776-8397`;
 
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby4cL2g8uEAHLgwsF02k88AdsRAmgbBO91uUq-cfmhJzIZrwtRhk4VtLSxmmW2Sg0uOoQ/exec';
+const DEFAULT_CURRICULUM_NAME = 'JoaoVitor.pdf';
 const DEFAULT_CURRICULUM_PATH = './JoaoVitor.pdf';
 
 const form = document.getElementById('mail-form');
 const statusBox = document.getElementById('status');
 const submitButton = document.getElementById('submit-button');
 const resetButton = document.getElementById('reset-defaults');
+const previewCurriculumButton = document.getElementById('preview-curriculum');
+const selectedFileNameEl = document.getElementById('selected-file-name');
+const fileBadgeEl = document.getElementById('file-badge');
 
 const fields = {
   recruiterName: document.getElementById('recruiterName'),
@@ -75,13 +79,32 @@ function replaceTemplateTags(text) {
     .replace(/\[nomeCompleto\]/gi, fullName || 'recrutador');
 }
 
+function updateCurriculumDisplay() {
+  if (fields.curriculumFile && fields.curriculumFile.files && fields.curriculumFile.files.length > 0) {
+    const file = fields.curriculumFile.files[0];
+    if (selectedFileNameEl) selectedFileNameEl.textContent = file.name;
+    if (fileBadgeEl) {
+      fileBadgeEl.textContent = 'Personalizado';
+      fileBadgeEl.className = 'file-badge custom';
+    }
+  } else {
+    if (selectedFileNameEl) selectedFileNameEl.textContent = DEFAULT_CURRICULUM_NAME;
+    if (fileBadgeEl) {
+      fileBadgeEl.textContent = 'Padrão';
+      fileBadgeEl.className = 'file-badge';
+    }
+  }
+}
+
 function loadSavedValues() {
   const stored = localStorage.getItem('curriculoForm');
 
   if (stored) {
     const parsed = JSON.parse(stored);
     Object.entries(fields).forEach(([key, element]) => {
-      element.value = parsed[key] ?? '';
+      if (element && key !== 'curriculumFile') {
+        element.value = parsed[key] ?? '';
+      }
     });
     return;
   }
@@ -102,20 +125,24 @@ function saveValues() {
   localStorage.setItem('curriculoForm', JSON.stringify(payload));
 }
 
-function restoreDefaults() {
+async function restoreDefaults() {
   fields.subject.value = DEFAULT_SUBJECT;
   fields.message.value = DEFAULT_MESSAGE;
   fields.recruiterName.value = '';
   fields.recipientEmail.value = '';
   fields.bcc.value = '';
+  if (fields.curriculumFile) fields.curriculumFile.value = '';
   localStorage.removeItem('curriculoForm');
-  setStatus('Mensagem padrão restaurada.', 'success');
+  await loadDefaultCurriculum(true);
+  updateCurriculumDisplay();
+  setStatus('Mensagem e currículo padrão restaurados.', 'success');
 }
 
-async function loadDefaultCurriculum() {
+async function loadDefaultCurriculum(force = false) {
   if (!fields.curriculumFile) return;
 
-  if (fields.curriculumFile.files && fields.curriculumFile.files.length > 0) {
+  if (!force && fields.curriculumFile.files && fields.curriculumFile.files.length > 0) {
+    updateCurriculumDisplay();
     return;
   }
 
@@ -127,18 +154,23 @@ async function loadDefaultCurriculum() {
     }
 
     const blob = await response.blob();
-    const file = new File([blob], 'JoaoVitor.pdf', { type: 'application/pdf' });
+    const file = new File([blob], DEFAULT_CURRICULUM_NAME, { type: 'application/pdf' });
     const dataTransfer = new DataTransfer();
 
     dataTransfer.items.add(file);
     fields.curriculumFile.files = dataTransfer.files;
   } catch (error) {
-    console.warn('Não foi possível carregar o currículo padrão:', error);
+    console.warn('Executando localmente ou sem suporte a DataTransfer; usando currículo padrão:', error);
+  } finally {
+    updateCurriculumDisplay();
   }
 }
 
 function buildPayload() {
   const finalMessage = replaceTemplateTags(fields.message.value.trim());
+  const curriculumName = (fields.curriculumFile.files && fields.curriculumFile.files.length > 0)
+    ? fields.curriculumFile.files[0].name
+    : DEFAULT_CURRICULUM_NAME;
 
   return {
     'Data': formatFriendlyDateForStorage(new Date()),
@@ -147,7 +179,7 @@ function buildPayload() {
     'Cco cópia oculta': fields.bcc.value.trim(),
     'Corpo do e-mail': finalMessage,
     'Título do e-mail': fields.subject.value.trim(),
-    'Currículo': fields.curriculumFile.files && fields.curriculumFile.files.length ? fields.curriculumFile.files[0].name : '',
+    'Currículo': curriculumName,
   };
 }
 
@@ -168,12 +200,6 @@ async function submitForm(event) {
     return;
   }
 
-  if (!fields.curriculumFile.files || fields.curriculumFile.files.length === 0) {
-    setStatus('Selecione um currículo antes de enviar.', 'error');
-    fields.curriculumFile.focus();
-    return;
-  }
-
   submitButton.disabled = true;
   submitButton.textContent = 'Enviando...';
   setStatus('Enviando dados para a aba ListaAuto...', 'success');
@@ -187,7 +213,20 @@ async function submitForm(event) {
     formData.append('Corpo do e-mail', payload['Corpo do e-mail']);
     formData.append('Título do e-mail', payload['Título do e-mail']);
     formData.append('Currículo', payload['Currículo']);
-    formData.append('curriculumFile', fields.curriculumFile.files[0], fields.curriculumFile.files[0].name);
+
+    if (fields.curriculumFile.files && fields.curriculumFile.files.length > 0) {
+      formData.append('curriculumFile', fields.curriculumFile.files[0], fields.curriculumFile.files[0].name);
+    } else {
+      try {
+        const fileResp = await fetch(DEFAULT_CURRICULUM_PATH);
+        if (fileResp.ok) {
+          const blob = await fileResp.blob();
+          formData.append('curriculumFile', blob, DEFAULT_CURRICULUM_NAME);
+        }
+      } catch (e) {
+        console.warn('Não foi possível anexar blob do PDF:', e);
+      }
+    }
 
     const response = await fetch(GOOGLE_SCRIPT_URL, {
       method: 'POST',
@@ -223,9 +262,25 @@ async function submitForm(event) {
   }
 }
 
+function previewCurriculum() {
+  if (fields.curriculumFile.files && fields.curriculumFile.files.length > 0) {
+    const file = fields.curriculumFile.files[0];
+    const fileURL = URL.createObjectURL(file);
+    window.open(fileURL, '_blank');
+  } else {
+    window.open(DEFAULT_CURRICULUM_PATH, '_blank');
+  }
+}
+
 form.addEventListener('input', saveValues);
 form.addEventListener('submit', submitForm);
 resetButton.addEventListener('click', restoreDefaults);
+if (fields.curriculumFile) {
+  fields.curriculumFile.addEventListener('change', updateCurriculumDisplay);
+}
+if (previewCurriculumButton) {
+  previewCurriculumButton.addEventListener('click', previewCurriculum);
+}
 
 loadSavedValues();
 loadDefaultCurriculum();
