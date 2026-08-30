@@ -20,6 +20,7 @@ João Vitor Nogueira
 (11) 9 7776-8397`;
 
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby4cL2g8uEAHLgwsF02k88AdsRAmgbBO91uUq-cfmhJzIZrwtRhk4VtLSxmmW2Sg0uOoQ/exec';
+const DEFAULT_CURRICULUM_PATH = './JoaoVitor.pdf';
 
 const form = document.getElementById('mail-form');
 const statusBox = document.getElementById('status');
@@ -109,6 +110,31 @@ function restoreDefaults() {
   fields.bcc.value = '';
   localStorage.removeItem('curriculoForm');
   setStatus('Mensagem padrão restaurada.', 'success');
+}
+
+async function loadDefaultCurriculum() {
+  if (!fields.curriculumFile) return;
+
+  if (fields.curriculumFile.files && fields.curriculumFile.files.length > 0) {
+    return;
+  }
+
+  try {
+    const response = await fetch(DEFAULT_CURRICULUM_PATH, { cache: 'no-store' });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const file = new File([blob], 'JoaoVitor.pdf', { type: 'application/pdf' });
+    const dataTransfer = new DataTransfer();
+
+    dataTransfer.items.add(file);
+    fields.curriculumFile.files = dataTransfer.files;
+  } catch (error) {
+    console.warn('Não foi possível carregar o currículo padrão:', error);
+  }
 }
 
 function buildPayload() {
@@ -202,3 +228,4 @@ form.addEventListener('submit', submitForm);
 resetButton.addEventListener('click', restoreDefaults);
 
 loadSavedValues();
+loadDefaultCurriculum();
