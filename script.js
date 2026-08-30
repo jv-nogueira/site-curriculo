@@ -20,7 +20,8 @@ João Vitor Nogueira
 (11) 9 7776-8397`;
 
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwiXgDosPeWe6nDbuKi9Qi_nbxHedYV_fDra33Oi7pBD9o1p1s_0wAaNobJQqi7kbtxPQ/exec';
-const DEFAULT_CURRICULUM_NAME = 'JoaoVitor.pdf';
+const DRIVE_CURRICULUM_VIEW_URL = 'https://drive.google.com/file/d/17sVYzFS58asczdof5QV_WAIEgYSLD8Rd/view';
+const DEFAULT_CURRICULUM_NAME = 'JoaoVitorNogueira.pdf';
 const DEFAULT_CURRICULUM_PATH = './JoaoVitor.pdf';
 
 const form = document.getElementById('mail-form');
@@ -137,7 +138,7 @@ function saveValues() {
   localStorage.setItem('curriculoForm', JSON.stringify(payload));
 }
 
-async function restoreDefaults() {
+function restoreDefaults() {
   fields.subject.value = DEFAULT_SUBJECT;
   fields.message.value = DEFAULT_MESSAGE;
   fields.recruiterName.value = '';
@@ -145,37 +146,8 @@ async function restoreDefaults() {
   fields.bcc.value = '';
   if (fields.curriculumFile) fields.curriculumFile.value = '';
   localStorage.removeItem('curriculoForm');
-  await loadDefaultCurriculum(true);
   updateCurriculumDisplay();
   setStatus('Mensagem e currículo padrão restaurados.', 'success');
-}
-
-async function loadDefaultCurriculum(force = false) {
-  if (!fields.curriculumFile) return;
-
-  if (!force && fields.curriculumFile.files && fields.curriculumFile.files.length > 0) {
-    updateCurriculumDisplay();
-    return;
-  }
-
-  try {
-    const response = await fetch(DEFAULT_CURRICULUM_PATH, { cache: 'no-store' });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const blob = await response.blob();
-    const file = new File([blob], DEFAULT_CURRICULUM_NAME, { type: 'application/pdf' });
-    const dataTransfer = new DataTransfer();
-
-    dataTransfer.items.add(file);
-    fields.curriculumFile.files = dataTransfer.files;
-  } catch (error) {
-    console.warn('Executando localmente ou sem suporte a DataTransfer; usando currículo padrão:', error);
-  } finally {
-    updateCurriculumDisplay();
-  }
 }
 
 function buildPayload() {
@@ -236,7 +208,7 @@ async function submitForm(event) {
 
   try {
     let base64Data = null;
-    let fileName = payload['Currículo'] || DEFAULT_CURRICULUM_NAME;
+    let fileName = DEFAULT_CURRICULUM_NAME;
 
     if (fields.curriculumFile.files && fields.curriculumFile.files.length > 0) {
       base64Data = await fileToBase64(fields.curriculumFile.files[0]);
@@ -304,7 +276,7 @@ function previewCurriculum() {
     const fileURL = URL.createObjectURL(file);
     window.open(fileURL, '_blank');
   } else {
-    window.open(DEFAULT_CURRICULUM_PATH, '_blank');
+    window.open(DRIVE_CURRICULUM_VIEW_URL, '_blank');
   }
 }
 
@@ -399,4 +371,4 @@ document.addEventListener('keydown', (e) => {
 });
 
 loadSavedValues();
-loadDefaultCurriculum();
+updateCurriculumDisplay();
