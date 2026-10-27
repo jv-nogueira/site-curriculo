@@ -308,6 +308,19 @@ button.primary:hover {
   background: var(--primary-dark);
 }
 
+button.primary:disabled {
+  background: #64748b;
+  color: #ffffff;
+  cursor: wait;
+  opacity: 1;
+  transform: none;
+}
+
+button.primary:disabled:hover {
+  background: #64748b;
+  transform: none;
+}
+
 button.secondary {
   background: #eaf1ff;
   color: var(--primary);

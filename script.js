@@ -249,30 +249,6 @@ async function submitForm(event) {
     return;
   }
 
-  clearTimeout(emailCheckTimer);
-  const emailCheckSequenceAtSubmit = ++emailCheckSequence;
-  setEmailCheckStatus('Verificando e-mail na aba Log...', 'checking');
-  try {
-    const exists = await lookupRecipientEmail(payload['E-mail do Destinatário']);
-    if (emailCheckSequenceAtSubmit !== emailCheckSequence) {
-      return;
-    }
-    if (exists) {
-      const message = 'Este e-mail já existe na aba Log. Informe outro destinatário.';
-      setEmailCheckStatus(message, 'duplicate');
-      setStatus(message, 'error');
-      scrollToRecipientEmail();
-      return;
-    }
-    setEmailCheckStatus('E-mail disponível.', 'checking');
-  } catch (error) {
-    console.error(error);
-    setEmailCheckStatus('Não foi possível verificar este e-mail. Tente novamente.', 'error');
-    setStatus('Não foi possível confirmar se o e-mail já consta na aba Log. O envio foi cancelado.', 'error');
-    scrollToRecipientEmail();
-    return;
-  }
-
   if (!payload['Título do e-mail']) {
     setStatus('Informe o título do e-mail.', 'error');
     fields.subject.focus();
@@ -287,9 +263,28 @@ async function submitForm(event) {
 
   submitButton.disabled = true;
   submitButton.textContent = 'Enviando e-mail...';
-  setStatus('Preparando e disparando o e-mail pelo Gmail...', 'success');
+  submitButton.setAttribute('aria-busy', 'true');
 
   try {
+    clearTimeout(emailCheckTimer);
+    const emailCheckSequenceAtSubmit = ++emailCheckSequence;
+    setEmailCheckStatus('Verificando e-mail na aba Log...', 'checking');
+
+    const exists = await lookupRecipientEmail(payload['E-mail do Destinatário']);
+    if (emailCheckSequenceAtSubmit !== emailCheckSequence) {
+      return;
+    }
+    if (exists) {
+      const message = 'Este e-mail já existe na aba Log. Informe outro destinatário.';
+      setEmailCheckStatus(message, 'duplicate');
+      setStatus(message, 'error');
+      scrollToRecipientEmail();
+      return;
+    }
+
+    setEmailCheckStatus('E-mail disponível.', 'checking');
+    setStatus('Preparando e disparando o e-mail pelo Gmail...', 'success');
+
     let base64Data = null;
     let fileName = DEFAULT_CURRICULUM_NAME;
 
@@ -355,6 +350,7 @@ async function submitForm(event) {
   } finally {
     submitButton.disabled = false;
     submitButton.textContent = 'Enviar Candidatura';
+    submitButton.removeAttribute('aria-busy');
   }
 }
 
