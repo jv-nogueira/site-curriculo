@@ -46,7 +46,7 @@
           <div class="curriculum-field">
             <div class="curriculum-header">
               <label><span>Currículo</span></label>
-              <button type="button" class="preview-btn" id="preview-curriculum" title="Visualizar currículo em nova aba">
+              <button type="button" class="preview-btn" id="preview-curriculum" title="Visualizar currículo">
                 👁️ Visualizar PDF
               </button>
             </div>
@@ -119,6 +119,16 @@
           <button type="button" class="secondary" id="modal-cancel-btn">Voltar e Editar</button>
           <button type="button" class="primary" id="modal-send-btn">Enviar Candidatura</button>
         </div>
+      </div>
+    </div>
+
+    <div id="curriculum-modal" class="modal-overlay" aria-hidden="true">
+      <div class="modal-card curriculum-modal-card" role="dialog" aria-modal="true" aria-labelledby="curriculum-modal-title">
+        <div class="modal-header">
+          <h2 id="curriculum-modal-title">📄 Pré-visualização do currículo</h2>
+          <button type="button" class="modal-close-btn" id="curriculum-modal-close" aria-label="Fechar">&times;</button>
+        </div>
+        <iframe id="curriculum-preview-frame" title="Pré-visualização do currículo"></iframe>
       </div>
     </div>
 

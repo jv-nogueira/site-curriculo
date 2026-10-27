@@ -21,6 +21,7 @@ João Vitor Nogueira
 
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWATI1oVihlAXOsVzYb0UMgCjngK60DCz6iWoS3N3Ka0wcgtq9Sn8qfk-eHVPO38s/exec';
 const DRIVE_CURRICULUM_VIEW_URL = 'https://drive.google.com/file/d/17sVYzFS58asczdof5QV_WAIEgYSLD8Rd/view';
+const DRIVE_CURRICULUM_PREVIEW_URL = DRIVE_CURRICULUM_VIEW_URL.replace(/\/view(?:\?.*)?$/, '/preview');
 const DEFAULT_CURRICULUM_NAME = 'JoaoVitorNogueira.pdf';
 const DEFAULT_CURRICULUM_PATH = './JoaoVitor.pdf';
 
@@ -35,6 +36,9 @@ const selectedFileNameEl = document.getElementById('selected-file-name');
 const fileBadgeEl = document.getElementById('file-badge');
 
 const emailModal = document.getElementById('email-modal');
+const curriculumModal = document.getElementById('curriculum-modal');
+const curriculumModalCloseBtn = document.getElementById('curriculum-modal-close');
+const curriculumPreviewFrame = document.getElementById('curriculum-preview-frame');
 const modalCloseBtn = document.getElementById('modal-close');
 const modalCancelBtn = document.getElementById('modal-cancel-btn');
 const modalSendBtn = document.getElementById('modal-send-btn');
@@ -56,6 +60,7 @@ const fields = {
 
 let emailCheckTimer = null;
 let emailCheckSequence = 0;
+let curriculumPreviewObjectUrl = null;
 
 function setStatus(message, type) {
   statusBox.textContent = message;
@@ -355,12 +360,29 @@ async function submitForm(event) {
 }
 
 function previewCurriculum() {
+  closeCurriculumPreview();
+
   if (fields.curriculumFile.files && fields.curriculumFile.files.length > 0) {
-    const file = fields.curriculumFile.files[0];
-    const fileURL = URL.createObjectURL(file);
-    window.open(fileURL, '_blank');
+    curriculumPreviewObjectUrl = URL.createObjectURL(fields.curriculumFile.files[0]);
+    curriculumPreviewFrame.src = curriculumPreviewObjectUrl;
   } else {
-    window.open(DRIVE_CURRICULUM_VIEW_URL, '_blank');
+    curriculumPreviewFrame.src = DRIVE_CURRICULUM_PREVIEW_URL;
+  }
+
+  curriculumModal.classList.add('active');
+  curriculumModal.setAttribute('aria-hidden', 'false');
+}
+
+function closeCurriculumPreview() {
+  if (!curriculumModal) return;
+
+  curriculumModal.classList.remove('active');
+  curriculumModal.setAttribute('aria-hidden', 'true');
+  curriculumPreviewFrame.src = 'about:blank';
+
+  if (curriculumPreviewObjectUrl) {
+    URL.revokeObjectURL(curriculumPreviewObjectUrl);
+    curriculumPreviewObjectUrl = null;
   }
 }
 
@@ -418,6 +440,18 @@ if (previewCurriculumButton) {
   previewCurriculumButton.addEventListener('click', previewCurriculum);
 }
 
+if (curriculumModalCloseBtn) {
+  curriculumModalCloseBtn.addEventListener('click', closeCurriculumPreview);
+}
+
+if (curriculumModal) {
+  curriculumModal.addEventListener('click', (e) => {
+    if (e.target === curriculumModal) {
+      closeCurriculumPreview();
+    }
+  });
+}
+
 if (previewEmailBtn) {
   previewEmailBtn.addEventListener('click', openEmailPreview);
 }
@@ -450,8 +484,13 @@ if (emailModal) {
 }
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && emailModal && emailModal.classList.contains('active')) {
-    closeEmailPreview();
+  if (e.key === 'Escape') {
+    if (emailModal && emailModal.classList.contains('active')) {
+      closeEmailPreview();
+    }
+    if (curriculumModal && curriculumModal.classList.contains('active')) {
+      closeCurriculumPreview();
+    }
   }
 });
 

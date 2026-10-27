@@ -386,6 +386,19 @@ button.secondary:hover {
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.curriculum-modal-card {
+  width: min(100%, 900px);
+  height: min(85vh, 760px);
+  max-height: 90vh;
+}
+
+.curriculum-modal-card iframe {
+  width: 100%;
+  flex: 1;
+  border: 0;
+  background: #f2f5fb;
+}
+
 .modal-overlay.active .modal-card {
   transform: scale(1) translateY(0);
 }
