@@ -84,6 +84,22 @@ label span {
   font-size: 0.95rem;
 }
 
+.email-check-status {
+  min-height: 0;
+  margin-top: -4px;
+  font-size: 0.82rem !important;
+  font-weight: 500;
+}
+
+.email-check-status.checking {
+  color: var(--muted);
+}
+
+.email-check-status.duplicate,
+.email-check-status.error {
+  color: var(--danger);
+}
+
 input,
 textarea {
   width: 100%;

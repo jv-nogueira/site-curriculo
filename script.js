@@ -19,7 +19,7 @@ Atenciosamente,
 João Vitor Nogueira
 (11) 9 7776-8397`;
 
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwiXgDosPeWe6nDbuKi9Qi_nbxHedYV_fDra33Oi7pBD9o1p1s_0wAaNobJQqi7kbtxPQ/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWATI1oVihlAXOsVzYb0UMgCjngK60DCz6iWoS3N3Ka0wcgtq9Sn8qfk-eHVPO38s/exec';
 const DRIVE_CURRICULUM_VIEW_URL = 'https://drive.google.com/file/d/17sVYzFS58asczdof5QV_WAIEgYSLD8Rd/view';
 const DEFAULT_CURRICULUM_NAME = 'JoaoVitorNogueira.pdf';
 const DEFAULT_CURRICULUM_PATH = './JoaoVitor.pdf';
@@ -27,6 +27,7 @@ const DEFAULT_CURRICULUM_PATH = './JoaoVitor.pdf';
 const form = document.getElementById('mail-form');
 const statusBox = document.getElementById('status');
 const submitButton = document.getElementById('submit-button');
+const emailCheckStatus = document.getElementById('email-check-status');
 const resetButton = document.getElementById('reset-defaults');
 const previewCurriculumButton = document.getElementById('preview-curriculum');
 const previewEmailBtn = document.getElementById('preview-email-btn');
@@ -53,9 +54,67 @@ const fields = {
   curriculumFile: document.getElementById('curriculumFile'),
 };
 
+let emailCheckTimer = null;
+let emailCheckSequence = 0;
+
 function setStatus(message, type) {
   statusBox.textContent = message;
   statusBox.className = `status ${type}`;
+}
+
+function setEmailCheckStatus(message, type = '') {
+  emailCheckStatus.textContent = message;
+  emailCheckStatus.className = `email-check-status ${type}`.trim();
+}
+
+async function lookupRecipientEmail(email) {
+  const query = new URLSearchParams({ action: 'checkEmail', email });
+  const response = await fetch(`${GOOGLE_SCRIPT_URL}?${query.toString()}`, {
+    cache: 'no-store',
+  });
+  const result = await response.json();
+
+  if (!response.ok || !result.ok || typeof result.exists !== 'boolean') {
+    throw new Error(result.error || 'Não foi possível verificar o e-mail na aba Log.');
+  }
+
+  return result.exists;
+}
+
+function scrollToRecipientEmail() {
+  fields.recipientEmail.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  fields.recipientEmail.focus({ preventScroll: true });
+}
+
+function scheduleRecipientEmailCheck() {
+  clearTimeout(emailCheckTimer);
+  const sequence = ++emailCheckSequence;
+  const email = fields.recipientEmail.value.trim();
+  setEmailCheckStatus('');
+
+  if (!email || !fields.recipientEmail.checkValidity()) {
+    return;
+  }
+
+  setEmailCheckStatus('Verificando e-mail na aba Log...', 'checking');
+  emailCheckTimer = setTimeout(async () => {
+    try {
+      const exists = await lookupRecipientEmail(email);
+      if (sequence !== emailCheckSequence || fields.recipientEmail.value.trim() !== email) {
+        return;
+      }
+      if (exists) {
+        setEmailCheckStatus('Este e-mail já existe na aba Log. Informe outro destinatário.', 'duplicate');
+      } else {
+        setEmailCheckStatus('E-mail disponível.', 'checking');
+      }
+    } catch (error) {
+      if (sequence === emailCheckSequence) {
+        setEmailCheckStatus('Não foi possível verificar este e-mail. Tente novamente.', 'error');
+        console.error(error);
+      }
+    }
+  }, 350);
 }
 
 function normalizeText(value) {
@@ -190,6 +249,30 @@ async function submitForm(event) {
     return;
   }
 
+  clearTimeout(emailCheckTimer);
+  const emailCheckSequenceAtSubmit = ++emailCheckSequence;
+  setEmailCheckStatus('Verificando e-mail na aba Log...', 'checking');
+  try {
+    const exists = await lookupRecipientEmail(payload['E-mail do Destinatário']);
+    if (emailCheckSequenceAtSubmit !== emailCheckSequence) {
+      return;
+    }
+    if (exists) {
+      const message = 'Este e-mail já existe na aba Log. Informe outro destinatário.';
+      setEmailCheckStatus(message, 'duplicate');
+      setStatus(message, 'error');
+      scrollToRecipientEmail();
+      return;
+    }
+    setEmailCheckStatus('E-mail disponível.', 'checking');
+  } catch (error) {
+    console.error(error);
+    setEmailCheckStatus('Não foi possível verificar este e-mail. Tente novamente.', 'error');
+    setStatus('Não foi possível confirmar se o e-mail já consta na aba Log. O envio foi cancelado.', 'error');
+    scrollToRecipientEmail();
+    return;
+  }
+
   if (!payload['Título do e-mail']) {
     setStatus('Informe o título do e-mail.', 'error');
     fields.subject.focus();
@@ -256,11 +339,16 @@ async function submitForm(event) {
     }
 
     if (!response.ok || result.ok === false) {
+      if (result.duplicate) {
+        setEmailCheckStatus(result.error, 'duplicate');
+        setStatus(result.error, 'error');
+        scrollToRecipientEmail();
+      }
       throw new Error(result.error || result.message || 'Não foi possível enviar o e-mail.');
     }
 
     saveValues();
-    setStatus('E-mail enviado com sucesso e registrado na aba ListaAuto!', 'success');
+    setStatus('E-mail enviado com sucesso e registrado na aba Log!', 'success');
   } catch (error) {
     console.error(error);
     setStatus(error.message || 'Erro ao disparar o e-mail.', 'error');
@@ -323,6 +411,7 @@ function closeEmailPreview() {
 
 form.addEventListener('input', saveValues);
 form.addEventListener('submit', submitForm);
+fields.recipientEmail.addEventListener('input', scheduleRecipientEmailCheck);
 resetButton.addEventListener('click', restoreDefaults);
 
 if (fields.curriculumFile) {

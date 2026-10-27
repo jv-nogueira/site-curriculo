@@ -32,7 +32,7 @@ function formatDateOnly(date) {
 }
 
 function ensureSheetHeaders(sheet) {
-  const expectedHeaders = ['Data', 'Nome', 'E-mail'];
+  const expectedHeaders = ['Nome', 'E-mail', 'Data'];
   const currentValues = sheet.getDataRange().getValues();
   const firstRow = currentValues[0] || [];
 
@@ -42,6 +42,30 @@ function ensureSheetHeaders(sheet) {
   }
 
   return firstRow;
+}
+
+function emailExistsInLog(email) {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = spreadsheet.getSheetByName('Log');
+  if (!sheet || sheet.getLastRow() < 2) {
+    return false;
+  }
+
+  const targetEmails = cleanEmailList(email)
+    .split(',')
+    .map(value => value.trim().toLowerCase())
+    .filter(Boolean);
+  if (!targetEmails.length) {
+    return false;
+  }
+
+  const loggedEmails = sheet.getRange(2, 2, sheet.getLastRow() - 1, 1).getDisplayValues();
+  return loggedEmails.some(row => {
+    const addresses = cleanEmailList(row[0])
+      .split(',')
+      .map(value => value.trim().toLowerCase());
+    return addresses.some(address => targetEmails.includes(address));
+  });
 }
 
 function cleanEmailList(emailString) {
@@ -178,6 +202,29 @@ function doGet(e) {
   const event = e || {};
   const params = event.parameter || {};
 
+  if (params.action === 'checkEmail') {
+    try {
+      const email = cleanEmailList(params.email || '');
+      if (!email) {
+        throw new Error('Informe um e-mail para verificar.');
+      }
+
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          ok: true,
+          exists: emailExistsInLog(email)
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    } catch (error) {
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          ok: false,
+          error: error.toString()
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
   // Redireciona para o arquivo de currículo da pasta para visualização
   if (params.action === 'preview') {
     try {
@@ -217,25 +264,39 @@ function doPost(e) {
       payload = event.parameter;
     }
 
-    // 1. Disparar o e-mail através do Gmail
-    sendApplicationEmail(payload);
+    const lock = LockService.getScriptLock();
+    lock.waitLock(30000);
+    try {
+      const email = cleanEmailList(payload.recipientEmail || payload['E-mail do Destinatário'] || '');
+      if (emailExistsInLog(email)) {
+        return ContentService
+          .createTextOutput(JSON.stringify({
+            ok: false,
+            duplicate: true,
+            error: 'Este e-mail já consta na aba Log. Informe outro destinatário.'
+          }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
 
-    // 2. Registrar log simplificado na aba ListaAuto (Data, Nome, E-mail)
-    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = spreadsheet.getSheetByName('ListaAuto') || spreadsheet.insertSheet('ListaAuto');
+      // Dispara o e-mail somente se o destinatário ainda não estiver no Log.
+      sendApplicationEmail(payload);
 
-    ensureSheetHeaders(sheet);
+      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+      const sheet = spreadsheet.getSheetByName('Log') || spreadsheet.insertSheet('Log');
+      ensureSheetHeaders(sheet);
 
-    const dataFormatada = formatDateOnly(new Date());
-    const nome = payload.recruiterName || payload['Nome do Recrutador'] || '';
-    const email = cleanEmailList(payload.recipientEmail || payload['E-mail do Destinatário'] || '');
-
-    sheet.appendRow([dataFormatada, nome, email]);
+      const dataFormatada = formatDateOnly(new Date());
+      const nome = payload.recruiterName || payload['Nome do Recrutador'] || '';
+      sheet.insertRowBefore(2);
+      sheet.getRange(2, 1, 1, 3).setValues([[nome, email, dataFormatada]]);
+    } finally {
+      lock.releaseLock();
+    }
 
     return ContentService
       .createTextOutput(JSON.stringify({
         ok: true, 
-        message: 'E-mail enviado e registrado com sucesso!' 
+        message: 'E-mail enviado e registrado na aba Log com sucesso!' 
       }))
       .setMimeType(ContentService.MimeType.JSON);
   } catch (error) {

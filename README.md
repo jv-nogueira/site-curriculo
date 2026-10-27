@@ -5,7 +5,8 @@ Este projeto disponibiliza uma interface web para preencher, personalizar e disp
 ## 🚀 Funcionalidades
 
 - **Disparo Direto pelo Gmail:** O Google Apps Script (`GmailApp.sendEmail`) envia o e-mail real com o PDF anexado e suporte a Cco.
-- **Log Simplificado no Google Sheets:** Registra na aba `ListaAuto` apenas as colunas essenciais: `Data` (DD/MM/AAAA), `Nome` e `E-mail`.
+- **Log no Google Sheets:** Registra na aba `Log` nas colunas `Nome`, `E-mail` e `Data`, inserindo cada novo envio na linha 2.
+- **Prevenção de duplicados:** Consulta a coluna `B` da aba `Log` enquanto o e-mail é digitado e bloqueia o envio se ele já estiver registrado.
 - **Currículo Padrão e Personalizado:** Carrega automaticamente o arquivo padrão `JoaoVitor.pdf` com visualizador em nova aba e permite anexar outros PDFs.
 - **Tags Dinâmicas:** Substitui automaticamente `[saudacao]` (bom dia/boa tarde/boa noite), `[primeiroNome]` e `[nomeCompleto]`.
 - **Armazenamento de Rascunho:** Salva alterações no `localStorage` do navegador para evitar perda de dados.
@@ -30,6 +31,7 @@ Este projeto disponibiliza uma interface web para preencher, personalizar e disp
    - Quem tem acesso: **Qualquer pessoa** (Anyone)
 6. Clique em **Implantar**, autorize as permissões da sua conta do Google e copie a **URL do App da Web** (`https://script.google.com/macros/s/.../exec`).
 7. Cole a URL na constante `GOOGLE_SCRIPT_URL` dentro do arquivo [`script.js`](script.js).
+8. Após atualizar o código do Apps Script, edite a implantação do App da Web, selecione **Nova versão** e implante novamente para publicar as alterações.
 
 ## 🌐 Publicação no GitHub Pages
 
