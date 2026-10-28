@@ -20,6 +20,7 @@ João Vitor Nogueira
 (11) 9 7776-8397`;
 
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWATI1oVihlAXOsVzYb0UMgCjngK60DCz6iWoS3N3Ka0wcgtq9Sn8qfk-eHVPO38s/exec';
+const GOOGLE_CLIENT_ID = 'COLE_SEU_CLIENT_ID_AQUI';
 const DRIVE_CURRICULUM_VIEW_URL = 'https://drive.google.com/file/d/17sVYzFS58asczdof5QV_WAIEgYSLD8Rd/view';
 const DRIVE_CURRICULUM_PREVIEW_URL = DRIVE_CURRICULUM_VIEW_URL.replace(/\/view(?:\?.*)?$/, '/preview');
 const DEFAULT_CURRICULUM_NAME = 'JoaoVitorNogueira.pdf';
@@ -28,6 +29,9 @@ const DEFAULT_CURRICULUM_PATH = './JoaoVitor.pdf';
 const form = document.getElementById('mail-form');
 const statusBox = document.getElementById('status');
 const submitButton = document.getElementById('submit-button');
+const authStatus = document.getElementById('auth-status');
+const googleSignInButton = document.getElementById('google-signin-button');
+const googleSignOutButton = document.getElementById('google-signout-button');
 const emailCheckStatus = document.getElementById('email-check-status');
 const resetButton = document.getElementById('reset-defaults');
 const previewCurriculumButton = document.getElementById('preview-curriculum');
@@ -61,6 +65,8 @@ const fields = {
 let emailCheckTimer = null;
 let emailCheckSequence = 0;
 let curriculumPreviewObjectUrl = null;
+let googleIdToken = '';
+let googleUserEmail = '';
 
 function setStatus(message, type) {
   statusBox.textContent = message;
@@ -73,12 +79,19 @@ function setEmailCheckStatus(message, type = '') {
 }
 
 async function lookupRecipientEmail(email) {
-  const query = new URLSearchParams({ action: 'checkEmail', email });
-  const response = await fetch(`${GOOGLE_SCRIPT_URL}?${query.toString()}`, {
-    cache: 'no-store',
+  const response = await fetch(GOOGLE_SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'checkEmail',
+      email,
+      idToken: googleIdToken,
+    }),
   });
   const result = await response.json();
 
+  if (result.authRequired) {
+    signOutGoogleUser();
+  }
   if (!response.ok || !result.ok || typeof result.exists !== 'boolean') {
     throw new Error(result.error || 'Não foi possível verificar o e-mail na aba Log.');
   }
@@ -97,7 +110,7 @@ function scheduleRecipientEmailCheck() {
   const email = fields.recipientEmail.value.trim();
   setEmailCheckStatus('');
 
-  if (!email || !fields.recipientEmail.checkValidity()) {
+  if (!email || !fields.recipientEmail.checkValidity() || !googleIdToken) {
     return;
   }
 
@@ -120,6 +133,69 @@ function scheduleRecipientEmailCheck() {
       }
     }
   }, 350);
+}
+
+function updateAuthenticationState() {
+  const authenticated = Boolean(googleIdToken);
+  submitButton.disabled = !authenticated;
+  modalSendBtn.disabled = !authenticated;
+  googleSignInButton.hidden = authenticated;
+  googleSignOutButton.hidden = !authenticated;
+  authStatus.textContent = authenticated
+    ? `Conectado como ${googleUserEmail}.`
+    : 'Faça login com uma conta Google para habilitar o envio.';
+}
+
+function handleGoogleCredential(response) {
+  if (!response || !response.credential) {
+    authStatus.textContent = 'Não foi possível concluir o login. Tente novamente.';
+    return;
+  }
+
+  googleIdToken = response.credential;
+  try {
+    const encodedPayload = googleIdToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const identity = JSON.parse(atob(encodedPayload));
+    googleUserEmail = identity.email || '';
+  } catch (error) {
+    console.error('Não foi possível ler a identidade do login do Google:', error);
+    googleIdToken = '';
+    googleUserEmail = '';
+    authStatus.textContent = 'Não foi possível validar a conta Google. Tente novamente.';
+    updateAuthenticationState();
+    return;
+  }
+
+  updateAuthenticationState();
+  scheduleRecipientEmailCheck();
+}
+
+function signOutGoogleUser() {
+  googleIdToken = '';
+  googleUserEmail = '';
+  updateAuthenticationState();
+}
+
+function initializeGoogleSignIn() {
+  if (GOOGLE_CLIENT_ID === 'COLE_SEU_CLIENT_ID_AQUI') {
+    authStatus.textContent = 'Configure o Client ID do Google para habilitar o login.';
+    return;
+  }
+  if (!window.google || !window.google.accounts || !window.google.accounts.id) {
+    authStatus.textContent = 'O login do Google não carregou. Atualize a página e tente novamente.';
+    return;
+  }
+
+  window.google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: handleGoogleCredential,
+  });
+  window.google.accounts.id.renderButton(googleSignInButton, {
+    theme: 'outline',
+    size: 'large',
+    text: 'signin_with',
+    shape: 'rectangular',
+  });
 }
 
 function normalizeText(value) {
@@ -246,6 +322,12 @@ function fileToBase64(fileOrBlob) {
 async function submitForm(event) {
   event.preventDefault();
 
+  if (!googleIdToken) {
+    setStatus('Faça login com uma conta Google antes de enviar a candidatura.', 'error');
+    authStatus.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+
   const payload = buildPayload();
 
   if (!payload['E-mail do Destinatário']) {
@@ -311,6 +393,7 @@ async function submitForm(event) {
     const requestData = {
       recipientEmail: payload['E-mail do Destinatário'],
       recruiterName: payload['Nome do Recrutador'],
+      idToken: googleIdToken,
       bcc: payload['Cco cópia oculta'],
       subject: payload['Título do e-mail'],
       message: payload['Corpo do e-mail'],
@@ -339,6 +422,9 @@ async function submitForm(event) {
     }
 
     if (!response.ok || result.ok === false) {
+      if (result.authRequired) {
+        signOutGoogleUser();
+      }
       if (result.duplicate) {
         setEmailCheckStatus(result.error, 'duplicate');
         setStatus(result.error, 'error');
@@ -353,7 +439,7 @@ async function submitForm(event) {
     console.error(error);
     setStatus(error.message || 'Erro ao disparar o e-mail.', 'error');
   } finally {
-    submitButton.disabled = false;
+    updateAuthenticationState();
     submitButton.textContent = 'Enviar Candidatura';
     submitButton.removeAttribute('aria-busy');
   }
@@ -475,6 +561,8 @@ if (modalSendBtn) {
   });
 }
 
+googleSignOutButton.addEventListener('click', signOutGoogleUser);
+
 if (emailModal) {
   emailModal.addEventListener('click', (e) => {
     if (e.target === emailModal) {
@@ -496,3 +584,6 @@ document.addEventListener('keydown', (e) => {
 
 loadSavedValues();
 updateCurriculumDisplay();
+submitButton.disabled = true;
+modalSendBtn.disabled = true;
+window.addEventListener('load', initializeGoogleSignIn, { once: true });

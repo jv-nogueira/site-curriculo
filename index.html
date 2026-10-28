@@ -7,11 +7,23 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <link rel="stylesheet" href="styles.css?v=2" />
   </head>
   <body>
     <main class="container">
       <section class="card">
+        <div class="auth-panel">
+          <div class="auth-details">
+            <strong>Identificação de quem está enviando</strong>
+            <span id="auth-status" aria-live="polite">Faça login com uma conta Google para habilitar o envio.</span>
+          </div>
+          <div class="auth-actions">
+            <div id="google-signin-button"></div>
+            <button type="button" class="secondary" id="google-signout-button" hidden>Sair</button>
+          </div>
+        </div>
+
         <div class="header">
           <p class="eyebrow">Sistema de candidatura</p>
           <h1>Enviar mensagem para vaga</h1>
@@ -86,6 +98,9 @@
         </form>
 
         <div id="status" class="status" aria-live="polite"></div>
+        <footer class="site-footer">
+          <a href="privacidade.html">Política de Privacidade</a>
+        </footer>
       </section>
     </main>
 

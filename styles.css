@@ -40,8 +40,94 @@ body {
   padding: 32px;
 }
 
+.auth-panel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 26px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #f9fbff;
+}
+
+.auth-details {
+  display: grid;
+  gap: 5px;
+}
+
+.auth-details strong {
+  font-size: 0.95rem;
+}
+
+.auth-details span {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.auth-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+[hidden] {
+  display: none !important;
+}
+
 .header {
   margin-bottom: 28px;
+}
+
+.site-footer {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.88rem;
+  text-align: center;
+}
+
+.site-footer a {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.privacy-card {
+  margin: 24px 0;
+}
+
+.privacy-updated {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.privacy-content {
+  color: var(--text);
+  line-height: 1.7;
+}
+
+.privacy-content h2 {
+  margin: 28px 0 8px;
+  font-size: 1.15rem;
+}
+
+.privacy-content p {
+  margin: 0 0 14px;
+}
+
+.privacy-content ul {
+  padding-left: 24px;
+}
+
+.privacy-content li {
+  margin: 0 0 10px;
+}
+
+.privacy-content a {
+  color: var(--primary);
 }
 
 .eyebrow {
@@ -511,6 +597,11 @@ button.secondary:hover {
 
   .actions-right {
     width: 100%;
+    flex-direction: column;
+  }
+
+  .auth-panel {
+    align-items: flex-start;
     flex-direction: column;
   }
 

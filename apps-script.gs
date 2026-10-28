@@ -9,6 +9,7 @@
 
 const DRIVE_FOLDER_ID = '1OihWDBRijrK0tl9N9rTlKiTqUJq2eZg1';
 const TARGET_FILE_NAME = 'JoaoVitorNogueira.pdf';
+const GOOGLE_CLIENT_ID = 'COLE_SEU_CLIENT_ID_AQUI';
 
 function autorizarGmail() {
   GmailApp.getDrafts();
@@ -32,7 +33,7 @@ function formatDateOnly(date) {
 }
 
 function ensureSheetHeaders(sheet) {
-  const expectedHeaders = ['Nome', 'E-mail', 'Data'];
+  const expectedHeaders = ['Nome', 'E-mail', 'Data', 'Ator'];
   const currentValues = sheet.getDataRange().getValues();
   const firstRow = currentValues[0] || [];
 
@@ -41,7 +42,53 @@ function ensureSheetHeaders(sheet) {
     return expectedHeaders;
   }
 
+  if (!String(sheet.getRange(1, 4).getValue() || '').trim()) {
+    sheet.getRange(1, 4).setValue('Ator');
+  }
+
   return firstRow;
+}
+
+function verifyGoogleIdToken(idToken) {
+  const authError = (message) => {
+    const error = new Error(message);
+    error.authRequired = true;
+    throw error;
+  };
+
+  if (!idToken || GOOGLE_CLIENT_ID === 'COLE_SEU_CLIENT_ID_AQUI') {
+    authError('Faça login com uma conta Google para continuar.');
+  }
+
+  const response = UrlFetchApp.fetch(
+    'https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken),
+    { muteHttpExceptions: true }
+  );
+  const status = response.getResponseCode();
+  if (status !== 200) {
+    authError('O login expirou ou é inválido. Entre novamente com o Google.');
+  }
+
+  const identity = JSON.parse(response.getContentText());
+  const expiresAt = Number(identity.exp);
+  const issuerIsGoogle = !identity.iss ||
+    identity.iss === 'accounts.google.com' ||
+    identity.iss === 'https://accounts.google.com';
+  const emailIsVerified = identity.email_verified === true ||
+    String(identity.email_verified).toLowerCase() === 'true';
+
+  if (
+    identity.aud !== GOOGLE_CLIENT_ID ||
+    !issuerIsGoogle ||
+    !emailIsVerified ||
+    !identity.email ||
+    !expiresAt ||
+    expiresAt * 1000 <= Date.now()
+  ) {
+    authError('O login do Google não pôde ser validado. Entre novamente.');
+  }
+
+  return String(identity.email).trim().toLowerCase();
 }
 
 function emailExistsInLog(email) {
@@ -202,29 +249,6 @@ function doGet(e) {
   const event = e || {};
   const params = event.parameter || {};
 
-  if (params.action === 'checkEmail') {
-    try {
-      const email = cleanEmailList(params.email || '');
-      if (!email) {
-        throw new Error('Informe um e-mail para verificar.');
-      }
-
-      return ContentService
-        .createTextOutput(JSON.stringify({
-          ok: true,
-          exists: emailExistsInLog(email)
-        }))
-        .setMimeType(ContentService.MimeType.JSON);
-    } catch (error) {
-      return ContentService
-        .createTextOutput(JSON.stringify({
-          ok: false,
-          error: error.toString()
-        }))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-  }
-
   // Redireciona para o arquivo de currículo da pasta para visualização
   if (params.action === 'preview') {
     try {
@@ -264,6 +288,21 @@ function doPost(e) {
       payload = event.parameter;
     }
 
+    const actorEmail = verifyGoogleIdToken(payload.idToken);
+    if (payload.action === 'checkEmail') {
+      const email = cleanEmailList(payload.email || '');
+      if (!email) {
+        throw new Error('Informe um e-mail para verificar.');
+      }
+
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          ok: true,
+          exists: emailExistsInLog(email)
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     const lock = LockService.getScriptLock();
     lock.waitLock(30000);
     try {
@@ -288,7 +327,7 @@ function doPost(e) {
       const dataFormatada = formatDateOnly(new Date());
       const nome = payload.recruiterName || payload['Nome do Recrutador'] || '';
       sheet.insertRowBefore(2);
-      sheet.getRange(2, 1, 1, 3).setValues([[nome, email, dataFormatada]]);
+      sheet.getRange(2, 1, 1, 4).setValues([[nome, email, dataFormatada, actorEmail]]);
     } finally {
       lock.releaseLock();
     }
@@ -303,6 +342,7 @@ function doPost(e) {
     return ContentService
       .createTextOutput(JSON.stringify({ 
         ok: false, 
+        authRequired: error.authRequired === true,
         error: error.toString() 
       }))
       .setMimeType(ContentService.MimeType.JSON);

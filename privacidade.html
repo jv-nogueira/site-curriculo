@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Política de Privacidade do Sistema de Candidatura." />
+    <title>Política de Privacidade | Sistema de Candidatura</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css?v=2" />
+  </head>
+  <body>
+    <main class="container">
+      <article class="card privacy-card">
+        <header class="header">
+          <p class="eyebrow">Sistema de candidatura</p>
+          <h1>Política de Privacidade</h1>
+          <p class="privacy-updated">Última atualização: 27 de outubro de 2026</p>
+        </header>
+
+        <div class="privacy-content">
+          <p>
+            Esta política explica como o Sistema de Candidatura trata os dados usados
+            para preparar e enviar mensagens de candidatura. O site é hospedado pelo
+            GitHub Pages e usa serviços do Google para login, envio de e-mails e registro
+            dos envios.
+          </p>
+
+          <h2>Dados tratados</h2>
+          <ul>
+            <li>
+              <strong>Identificação de quem envia:</strong> o endereço de e-mail da
+              conta Google usada no login. O token de login é transmitido ao Apps Script
+              para validação e não é salvo no navegador nem na planilha.
+            </li>
+            <li>
+              <strong>Dados da candidatura:</strong> e-mail do destinatário, nome do
+              recrutador quando informado, assunto, mensagem, cópia oculta e currículo
+              anexado.
+            </li>
+            <li>
+              <strong>Rascunho:</strong> nome do recrutador, e-mails, assunto e texto
+              da mensagem podem ser salvos no armazenamento local do navegador para
+              restaurar o formulário. Esses dados permanecem nesse navegador até serem
+              apagados pelo usuário ou pelo próprio navegador.
+            </li>
+          </ul>
+
+          <h2>Como os dados são usados</h2>
+          <p>
+            O e-mail da conta Google é verificado pelo Apps Script para identificar a
+            pessoa que iniciou o envio e registrar essa identidade no Log. O endereço
+            do destinatário é consultado no Log para evitar candidaturas duplicadas.
+            Após a validação, a mensagem e o currículo são enviados pela conta Gmail
+            que autorizou o Apps Script.
+          </p>
+
+          <h2>Registro e armazenamento</h2>
+          <p>
+            A planilha conectada registra na aba <strong>Log</strong> o nome do
+            recrutador, o e-mail do destinatário, a data e o e-mail Google de quem
+            iniciou o envio (coluna “Ator”). O conteúdo da mensagem, o assunto, a cópia
+            oculta e o arquivo do currículo não são gravados nessas colunas do Log.
+          </p>
+          <p>
+            A candidatura enviada também fica sujeita às práticas de armazenamento e
+            retenção do Gmail usado para enviar. Os registros da planilha permanecem
+            até que o responsável pela planilha os exclua.
+          </p>
+
+          <h2>Serviços de terceiros</h2>
+          <p>
+            O login é fornecido pelo Google Identity Services; a validação da identidade,
+            o envio e o registro são feitos pelo Google Apps Script, Gmail e Google
+            Sheets. O site está hospedado pelo GitHub Pages. Esses serviços podem
+            processar dados técnicos necessários para operar e proteger suas plataformas,
+            conforme as respectivas políticas de privacidade.
+          </p>
+
+          <h2>Compartilhamento</h2>
+          <p>
+            Os dados da candidatura são enviados ao destinatário indicado e processados
+            pelos serviços Google necessários ao funcionamento. O acesso à planilha e
+            à conta Gmail depende das permissões configuradas pelo proprietário. Esta
+            aplicação não disponibiliza publicamente o conteúdo da planilha.
+          </p>
+
+          <h2>Seus controles e solicitações</h2>
+          <p>
+            Você pode sair da conta Google pelo botão “Sair” do formulário. Para solicitar
+            acesso, correção ou exclusão de um registro na planilha, ou esclarecer dúvidas
+            sobre esta política, entre em contato pelo e-mail
+            <a href="mailto:jvnogueira2010@gmail.com">jvnogueira2010@gmail.com</a>.
+            A remoção de uma mensagem já enviada deve ser tratada também na conta Gmail
+            que a enviou.
+          </p>
+
+          <h2>Alterações nesta política</h2>
+          <p>
+            Esta política poderá ser atualizada quando o funcionamento do sistema mudar.
+            A data no início da página indicará a revisão mais recente.
+          </p>
+        </div>
+
+        <footer class="site-footer">
+          <a href="./">Voltar ao formulário</a>
+        </footer>
+      </article>
+    </main>
+  </body>
+</html>
