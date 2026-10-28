@@ -19,7 +19,7 @@ Atenciosamente,
 João Vitor Nogueira
 (11) 9 7776-8397`;
 
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWATI1oVihlAXOsVzYb0UMgCjngK60DCz6iWoS3N3Ka0wcgtq9Sn8qfk-eHVPO38s/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzrhGTIMgDJpaq7Ns6bVl80UYW_dK5JsH9BQivd_dHr3Lf52xMR4bsMV9pWUjFuNLQCFw/exec';
 const GOOGLE_CLIENT_ID = '973715238698-dr99ku9cfh5r1lt7tq9jvi2fem1ea5r7.apps.googleusercontent.com';
 const DRIVE_CURRICULUM_VIEW_URL = 'https://drive.google.com/file/d/17sVYzFS58asczdof5QV_WAIEgYSLD8Rd/view';
 const DRIVE_CURRICULUM_PREVIEW_URL = DRIVE_CURRICULUM_VIEW_URL.replace(/\/view(?:\?.*)?$/, '/preview');
