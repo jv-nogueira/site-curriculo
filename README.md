@@ -30,7 +30,7 @@ Este projeto disponibiliza uma interface web para preencher, personalizar e disp
 5. Copie o Client ID e substitua `COLE_SEU_CLIENT_ID_AQUI` pelo mesmo valor em [`script.js`](script.js) e no código Apps Script.
 6. Abra a sua planilha do Google Sheets e vá em **Extensões > Apps Script**.
 7. Copie o conteúdo do arquivo [`apps-script.gs`](apps-script.gs) e cole no editor do Apps Script (substituindo o conteúdo existente).
-8. Salve o projeto (`Ctrl + S`) e execute `autorizarGmail` no editor para conceder as permissões solicitadas.
+8. Salve o projeto (`Ctrl + S`) e execute `autorizarGmail` no editor para conceder as permissões solicitadas, incluindo a chamada externa necessária para validar o login Google.
 9. Clique em **Implantar > Gerenciar implantações** (ou **Nova implantação**):
    - Tipo: **App da Web** (Web App)
    - Executar como: **Eu (seu e-mail)**

@@ -19,7 +19,7 @@ Atenciosamente,
 João Vitor Nogueira
 (11) 9 7776-8397`;
 
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzrhGTIMgDJpaq7Ns6bVl80UYW_dK5JsH9BQivd_dHr3Lf52xMR4bsMV9pWUjFuNLQCFw/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbydQoXbdS7yaTBIU9TTbEIyuUVma_JSZ2HNe8d-7XvzZPrYfhN8pxQeQaouDdwcCq03GA/exec';
 const GOOGLE_CLIENT_ID = '973715238698-dr99ku9cfh5r1lt7tq9jvi2fem1ea5r7.apps.googleusercontent.com';
 const DRIVE_CURRICULUM_VIEW_URL = 'https://drive.google.com/file/d/17sVYzFS58asczdof5QV_WAIEgYSLD8Rd/view';
 const DRIVE_CURRICULUM_PREVIEW_URL = DRIVE_CURRICULUM_VIEW_URL.replace(/\/view(?:\?.*)?$/, '/preview');
@@ -67,6 +67,7 @@ let emailCheckSequence = 0;
 let curriculumPreviewObjectUrl = null;
 let googleIdToken = '';
 let googleUserEmail = '';
+let isSubmitting = false;
 
 function setStatus(message, type) {
   statusBox.textContent = message;
@@ -128,7 +129,10 @@ function scheduleRecipientEmailCheck() {
       }
     } catch (error) {
       if (sequence === emailCheckSequence) {
-        setEmailCheckStatus('Não foi possível verificar este e-mail. Tente novamente.', 'error');
+        setEmailCheckStatus(
+          error.message || 'Não foi possível verificar este e-mail. Tente novamente.',
+          'error'
+        );
         console.error(error);
       }
     }
@@ -137,13 +141,19 @@ function scheduleRecipientEmailCheck() {
 
 function updateAuthenticationState() {
   const authenticated = Boolean(googleIdToken);
-  submitButton.disabled = !authenticated;
-  modalSendBtn.disabled = !authenticated;
+  const formLocked = !authenticated || isSubmitting;
+  Array.from(form.elements).forEach((element) => {
+    element.disabled = formLocked;
+  });
+  modalSendBtn.disabled = formLocked;
   googleSignInButton.hidden = authenticated;
   googleSignOutButton.hidden = !authenticated;
-  authStatus.textContent = authenticated
-    ? `Conectado como ${googleUserEmail}.`
-    : 'Faça login com uma conta Google para habilitar o envio.';
+  googleSignOutButton.disabled = isSubmitting;
+  authStatus.textContent = isSubmitting
+    ? `Conectado como ${googleUserEmail}. Aguarde o envio terminar.`
+    : authenticated
+      ? `Conectado como ${googleUserEmail}.`
+      : 'Faça login com uma conta Google para habilitar o formulário.';
 }
 
 function handleGoogleCredential(response) {
@@ -348,7 +358,8 @@ async function submitForm(event) {
     return;
   }
 
-  submitButton.disabled = true;
+  isSubmitting = true;
+  updateAuthenticationState();
   submitButton.textContent = 'Enviando e-mail...';
   submitButton.setAttribute('aria-busy', 'true');
 
@@ -439,6 +450,7 @@ async function submitForm(event) {
     console.error(error);
     setStatus(error.message || 'Erro ao disparar o e-mail.', 'error');
   } finally {
+    isSubmitting = false;
     updateAuthenticationState();
     submitButton.textContent = 'Enviar Candidatura';
     submitButton.removeAttribute('aria-busy');
@@ -584,6 +596,5 @@ document.addEventListener('keydown', (e) => {
 
 loadSavedValues();
 updateCurriculumDisplay();
-submitButton.disabled = true;
-modalSendBtn.disabled = true;
+updateAuthenticationState();
 window.addEventListener('load', initializeGoogleSignIn, { once: true });

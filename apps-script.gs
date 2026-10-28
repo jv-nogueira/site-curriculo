@@ -14,6 +14,10 @@ const GOOGLE_CLIENT_ID = '973715238698-dr99ku9cfh5r1lt7tq9jvi2fem1ea5r7.apps.goo
 function autorizarGmail() {
   GmailApp.getDrafts();
   SpreadsheetApp.getActiveSpreadsheet();
+  UrlFetchApp.fetch(
+    'https://oauth2.googleapis.com/tokeninfo?id_token=authorization-check',
+    { muteHttpExceptions: true }
+  );
   try {
     DriveApp.getFolderById(DRIVE_FOLDER_ID);
   } catch (e) {
