@@ -9,7 +9,7 @@
 
 const DRIVE_FOLDER_ID = '1OihWDBRijrK0tl9N9rTlKiTqUJq2eZg1';
 const TARGET_FILE_NAME = 'JoaoVitorNogueira.pdf';
-const GOOGLE_CLIENT_ID = 'COLE_SEU_CLIENT_ID_AQUI';
+const GOOGLE_CLIENT_ID = '973715238698-dr99ku9cfh5r1lt7tq9jvi2fem1ea5r7.apps.googleusercontent.com';
 
 function autorizarGmail() {
   GmailApp.getDrafts();
