@@ -397,9 +397,13 @@ button.primary:hover {
 button.primary:disabled {
   background: #64748b;
   color: #ffffff;
-  cursor: wait;
+  cursor: default;
   opacity: 1;
   transform: none;
+}
+
+button.primary:disabled[aria-busy="true"] {
+  cursor: wait;
 }
 
 button.primary:disabled:hover {
