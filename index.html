@@ -95,6 +95,7 @@
               <button type="submit" class="primary" id="submit-button">Enviar Candidatura</button>
             </div>
           </div>
+          <button type="button" id="login-required-overlay" class="login-required-overlay" aria-label="Faça login com o Google para habilitar o formulário" hidden></button>
         </form>
 
         <div id="status" class="status" aria-live="polite"></div>
@@ -145,6 +146,10 @@
         </div>
         <iframe id="curriculum-preview-frame" title="Pré-visualização do currículo"></iframe>
       </div>
+    </div>
+
+    <div id="auth-toast" class="auth-toast" role="alert" aria-live="assertive" hidden>
+      Faça login com uma conta Google antes de usar o formulário.
     </div>
 
     <script src="script.js"></script>

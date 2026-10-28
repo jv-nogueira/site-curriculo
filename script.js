@@ -30,8 +30,11 @@ const form = document.getElementById('mail-form');
 const statusBox = document.getElementById('status');
 const submitButton = document.getElementById('submit-button');
 const authStatus = document.getElementById('auth-status');
+const authPanel = document.querySelector('.auth-panel');
 const googleSignInButton = document.getElementById('google-signin-button');
 const googleSignOutButton = document.getElementById('google-signout-button');
+const loginRequiredOverlay = document.getElementById('login-required-overlay');
+const authToast = document.getElementById('auth-toast');
 const emailCheckStatus = document.getElementById('email-check-status');
 const resetButton = document.getElementById('reset-defaults');
 const previewCurriculumButton = document.getElementById('preview-curriculum');
@@ -68,6 +71,7 @@ let curriculumPreviewObjectUrl = null;
 let googleIdToken = '';
 let googleUserEmail = '';
 let isSubmitting = false;
+let authPromptTimer = null;
 
 function setStatus(message, type) {
   statusBox.textContent = message;
@@ -142,10 +146,15 @@ function scheduleRecipientEmailCheck() {
 function updateAuthenticationState() {
   const authenticated = Boolean(googleIdToken);
   const formLocked = !authenticated || isSubmitting;
+  form.classList.toggle('auth-locked', !authenticated);
   Array.from(form.elements).forEach((element) => {
-    element.disabled = formLocked;
+    if (element !== loginRequiredOverlay) {
+      element.disabled = formLocked;
+    }
   });
-  modalSendBtn.disabled = formLocked;
+  loginRequiredOverlay.hidden = authenticated || isSubmitting;
+  modalSendBtn.disabled = isSubmitting;
+  modalSendBtn.classList.toggle('auth-required', !authenticated);
   googleSignInButton.hidden = authenticated;
   googleSignOutButton.hidden = !authenticated;
   googleSignOutButton.disabled = isSubmitting;
@@ -156,12 +165,32 @@ function updateAuthenticationState() {
       : 'Faça login com uma conta Google para habilitar o formulário.';
 }
 
+function showLoginRequiredMessage() {
+  clearTimeout(authPromptTimer);
+  authToast.hidden = false;
+  authPanel.classList.add('auth-attention');
+  requestAnimationFrame(() => authToast.classList.add('visible'));
+  authPromptTimer = setTimeout(clearLoginRequiredMessage, 3500);
+}
+
+function clearLoginRequiredMessage() {
+  clearTimeout(authPromptTimer);
+  authToast.classList.remove('visible');
+  authPanel.classList.remove('auth-attention');
+  setTimeout(() => {
+    if (!authToast.classList.contains('visible')) {
+      authToast.hidden = true;
+    }
+  }, 200);
+}
+
 function handleGoogleCredential(response) {
   if (!response || !response.credential) {
     authStatus.textContent = 'Não foi possível concluir o login. Tente novamente.';
     return;
   }
 
+  clearLoginRequiredMessage();
   googleIdToken = response.credential;
   try {
     const encodedPayload = googleIdToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
@@ -333,8 +362,7 @@ async function submitForm(event) {
   event.preventDefault();
 
   if (!googleIdToken) {
-    setStatus('Faça login com uma conta Google antes de enviar a candidatura.', 'error');
-    authStatus.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    showLoginRequiredMessage();
     return;
   }
 
@@ -564,6 +592,11 @@ if (modalCancelBtn) {
 
 if (modalSendBtn) {
   modalSendBtn.addEventListener('click', () => {
+    if (!googleIdToken) {
+      closeEmailPreview();
+      showLoginRequiredMessage();
+      return;
+    }
     closeEmailPreview();
     if (form.requestSubmit) {
       form.requestSubmit();
@@ -572,6 +605,8 @@ if (modalSendBtn) {
     }
   });
 }
+
+loginRequiredOverlay.addEventListener('click', showLoginRequiredMessage);
 
 googleSignOutButton.addEventListener('click', signOutGoogleUser);
 
