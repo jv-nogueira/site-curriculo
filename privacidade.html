@@ -16,7 +16,7 @@
         <header class="header">
           <p class="eyebrow">Sistema de candidatura</p>
           <h1>Política de Privacidade</h1>
-          <p class="privacy-updated">Última atualização: 27 de outubro de 2026</p>
+          <p class="privacy-updated">Última atualização: 17 de novembro de 2026</p>
         </header>
 
         <div class="privacy-content">
@@ -40,6 +40,11 @@
               anexado.
             </li>
             <li>
+              <strong>Currículo padrão:</strong> o texto e a formatação do Google Docs
+              são lidos e atualizados pelo Apps Script quando o editor móvel do site é
+              usado.
+            </li>
+            <li>
               <strong>Rascunho:</strong> nome do recrutador, e-mails, assunto e texto
               da mensagem podem ser salvos no armazenamento local do navegador para
               restaurar o formulário. Esses dados permanecem nesse navegador até serem
@@ -53,7 +58,9 @@
             pessoa que iniciou o envio e registrar essa identidade no Log. O endereço
             do destinatário é consultado no Log para evitar candidaturas duplicadas.
             Após a validação, a mensagem e o currículo são enviados pela conta Gmail
-            que autorizou o Apps Script.
+            que autorizou o Apps Script. No editor móvel, o conteúdo é carregado e as
+            alterações são salvas no mesmo documento Google Docs; no envio, esse
+            documento é exportado para PDF.
           </p>
 
           <h2>Registro e armazenamento</h2>
@@ -72,8 +79,9 @@
           <h2>Serviços de terceiros</h2>
           <p>
             O login é fornecido pelo Google Identity Services; a validação da identidade,
-            o envio e o registro são feitos pelo Google Apps Script, Gmail e Google
-            Sheets. O site está hospedado pelo GitHub Pages. Esses serviços podem
+            a edição do currículo, o envio e o registro são feitos pelo Google Apps
+            Script, Google Docs, Drive, Gmail e Google Sheets. O site está hospedado
+            pelo GitHub Pages. Esses serviços podem
             processar dados técnicos necessários para operar e proteger suas plataformas,
             conforme as respectivas políticas de privacidade.
           </p>
@@ -83,7 +91,9 @@
             Os dados da candidatura são enviados ao destinatário indicado e processados
             pelos serviços Google necessários ao funcionamento. O acesso à planilha e
             à conta Gmail depende das permissões configuradas pelo proprietário. Esta
-            aplicação não disponibiliza publicamente o conteúdo da planilha.
+            aplicação não disponibiliza publicamente o conteúdo da planilha. O currículo
+            padrão está configurado para permitir edição a qualquer pessoa com o link;
+            visitantes que tenham acesso ao site podem alterar esse documento.
           </p>
 
           <h2>Seus controles e solicitações</h2>

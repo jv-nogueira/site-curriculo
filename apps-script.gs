@@ -7,7 +7,7 @@
  * 3. Garanta que o acesso esteja como: "Qualquer pessoa" (Anyone).
  */
 
-const DEFAULT_CURRICULUM_DOC_ID = '15cjLjTyhnVahdKCbVbko_2KpQwgg_k6UgiMwEB4tC64';
+const DEFAULT_CURRICULUM_DOC_ID = '1CqGEGpI1n90RLde0IZXpX2cJ4GzAKh7IAPw2ZJyc4aI';
 const DEFAULT_CURRICULUM_PDF_NAME = 'JoaoVitorNogueira.pdf';
 const GOOGLE_CLIENT_ID = '973715238698-dr99ku9cfh5r1lt7tq9jvi2fem1ea5r7.apps.googleusercontent.com';
 
@@ -19,6 +19,7 @@ function autorizarGmail() {
     { muteHttpExceptions: true }
   );
   DriveApp.getFileById(DEFAULT_CURRICULUM_DOC_ID).getName();
+  DocumentApp.openById(DEFAULT_CURRICULUM_DOC_ID).getBody().getText();
   Logger.log('Permissões concedidas com sucesso!');
 }
 
@@ -130,6 +131,152 @@ function getDefaultCurriculumFile() {
     throw new Error('O arquivo de currículo configurado não é um documento Google Docs.');
   }
   return file;
+}
+
+function assertMobileEditorCompatible(body) {
+  for (let i = 0; i < body.getNumChildren(); i++) {
+    const block = body.getChild(i);
+    const blockType = block.getType();
+    if (blockType !== DocumentApp.ElementType.PARAGRAPH &&
+        blockType !== DocumentApp.ElementType.LIST_ITEM) {
+      throw new Error('O editor móvel suporta parágrafos e listas, mas não tabelas ou imagens.');
+    }
+
+    for (let j = 0; j < block.getNumChildren(); j++) {
+      if (block.getChild(j).getType() !== DocumentApp.ElementType.TEXT) {
+        throw new Error('O editor móvel suporta texto e formatação básica, mas não imagens ou objetos incorporados.');
+      }
+    }
+  }
+}
+
+function getMobileEditorStyles(text) {
+  const styles = { bold: [], italic: [], underline: [] };
+  const textLength = text.getText().length;
+  const indices = text.getTextAttributeIndices();
+  const methods = {
+    bold: 'isBold',
+    italic: 'isItalic',
+    underline: 'isUnderline'
+  };
+
+  for (let i = 0; i < indices.length; i++) {
+    const start = indices[i];
+    const end = i + 1 < indices.length ? indices[i + 1] : textLength;
+    if (start >= end) continue;
+
+    Object.keys(methods).forEach((style) => {
+      if (text[methods[style]](start) === true) {
+        styles[style].push([start, end]);
+      }
+    });
+  }
+
+  return styles;
+}
+
+function getMobileEditorContent() {
+  const document = DocumentApp.openById(DEFAULT_CURRICULUM_DOC_ID);
+  const body = document.getBody();
+  assertMobileEditorCompatible(body);
+  const text = body.editAsText();
+  return {
+    text: text.getText(),
+    styles: getMobileEditorStyles(text)
+  };
+}
+
+function applyMobileEditorStyles(text, styles) {
+  const textLength = text.getText().length;
+  const methods = {
+    bold: 'setBold',
+    italic: 'setItalic',
+    underline: 'setUnderline'
+  };
+
+  Object.keys(methods).forEach((style) => {
+    const ranges = styles[style] || [];
+    if (!Array.isArray(ranges)) {
+      throw new Error('Formato de texto inválido.');
+    }
+
+    if (textLength > 0) {
+      text[methods[style]](0, textLength - 1, false);
+    }
+
+    ranges.forEach((range) => {
+      if (!Array.isArray(range) || range.length !== 2 ||
+          !Number.isInteger(range[0]) || !Number.isInteger(range[1]) ||
+          range[0] < 0 || range[1] <= range[0] || range[1] > textLength) {
+        throw new Error('Intervalo de formatação inválido.');
+      }
+      text[methods[style]](range[0], range[1] - 1, true);
+    });
+  });
+}
+
+function saveMobileEditorContent(payload) {
+  const updatedText = payload.text;
+  const originalText = payload.originalText;
+  if (typeof updatedText !== 'string' || typeof originalText !== 'string') {
+    throw new Error('O conteúdo do currículo está inválido.');
+  }
+  if (!updatedText.trim()) {
+    throw new Error('O currículo não pode ficar vazio.');
+  }
+  if (updatedText.length > 50000) {
+    throw new Error('O texto do currículo excede o limite permitido.');
+  }
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const document = DocumentApp.openById(DEFAULT_CURRICULUM_DOC_ID);
+    const body = document.getBody();
+    assertMobileEditorCompatible(body);
+    let text = body.editAsText();
+    const currentText = text.getText();
+    if (currentText !== originalText) {
+      const conflict = new Error('O documento foi alterado em outra sessão. Reabra a edição móvel antes de salvar.');
+      conflict.conflict = true;
+      throw conflict;
+    }
+
+    let prefix = 0;
+    const prefixLimit = Math.min(currentText.length, updatedText.length);
+    while (prefix < prefixLimit && currentText.charAt(prefix) === updatedText.charAt(prefix)) {
+      prefix++;
+    }
+
+    let suffix = 0;
+    while (suffix < currentText.length - prefix &&
+           suffix < updatedText.length - prefix &&
+           currentText.charAt(currentText.length - suffix - 1) ===
+             updatedText.charAt(updatedText.length - suffix - 1)) {
+      suffix++;
+    }
+
+    const oldEnd = currentText.length - suffix;
+    const newEnd = updatedText.length - suffix;
+    if (oldEnd > prefix) {
+      text.deleteText(prefix, oldEnd - 1);
+    }
+    if (newEnd > prefix) {
+      text.insertText(prefix, updatedText.substring(prefix, newEnd));
+    }
+
+    text = body.editAsText();
+    applyMobileEditorStyles(text, payload.styles || {});
+    const savedContent = {
+      text: text.getText(),
+      styles: getMobileEditorStyles(text)
+    };
+    document.saveAndClose();
+
+    return savedContent;
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function testarEnvioComAnexo() {
@@ -252,6 +399,20 @@ function doPost(e) {
     }
 
     const actorEmail = verifyGoogleIdToken(payload.idToken);
+    if (payload.action === 'getCurriculumEditorContent') {
+      const content = getMobileEditorContent();
+      return ContentService
+        .createTextOutput(JSON.stringify({ ok: true, text: content.text, styles: content.styles }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (payload.action === 'saveCurriculumEditorContent') {
+      const content = saveMobileEditorContent(payload);
+      return ContentService
+        .createTextOutput(JSON.stringify({ ok: true, text: content.text, styles: content.styles }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     if (payload.action === 'checkEmail') {
       const email = cleanEmailList(payload.email || '');
       if (!email) {
@@ -306,6 +467,7 @@ function doPost(e) {
       .createTextOutput(JSON.stringify({ 
         ok: false, 
         authRequired: error.authRequired === true,
+        conflict: error.conflict === true,
         error: error.toString() 
       }))
       .setMimeType(ContentService.MimeType.JSON);

@@ -19,9 +19,9 @@ Atenciosamente,
 João Vitor Nogueira
 (11) 9 7776-8397`;
 
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxN4n23X-D4fDlj3bqUxtBSsWfDcUoDGsv74KdhtmGpJZw2LXzQ3PBaKkYD7dQTbdhMbg/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbypzuyp6Z1Wj34vtTWso5Y14sHjB4UyE-h1jRXBFskEoSO56eOcdNPHhv8-WZo20sFA/exec';
 const GOOGLE_CLIENT_ID = '973715238698-dr99ku9cfh5r1lt7tq9jvi2fem1ea5r7.apps.googleusercontent.com';
-const DEFAULT_CURRICULUM_DOC_ID = '15cjLjTyhnVahdKCbVbko_2KpQwgg_k6UgiMwEB4tC64';
+const DEFAULT_CURRICULUM_DOC_ID = '1CqGEGpI1n90RLde0IZXpX2cJ4GzAKh7IAPw2ZJyc4aI';
 const DRIVE_CURRICULUM_EDIT_URL = `https://docs.google.com/document/d/${DEFAULT_CURRICULUM_DOC_ID}/edit?embedded=true`;
 const DEFAULT_CURRICULUM_NAME = 'JoaoVitorNogueira.pdf';
 const DEFAULT_CURRICULUM_DISPLAY_NAME = 'JoaoVitorNogueira (Google Docs)';
@@ -49,6 +49,9 @@ const curriculumModalDoneBtn = document.getElementById('curriculum-modal-done');
 const curriculumModalTitleEl = document.getElementById('curriculum-modal-title');
 const curriculumModalStatusEl = document.getElementById('curriculum-modal-status');
 const curriculumPreviewFrame = document.getElementById('curriculum-preview-frame');
+const curriculumMobileEditor = document.getElementById('curriculum-mobile-editor');
+const curriculumMobileEditorContent = document.getElementById('curriculum-mobile-editor-content');
+const curriculumMobileToolbar = document.querySelector('.curriculum-mobile-toolbar');
 const modalCloseBtn = document.getElementById('modal-close');
 const modalCancelBtn = document.getElementById('modal-cancel-btn');
 const modalSendBtn = document.getElementById('modal-send-btn');
@@ -71,6 +74,13 @@ const fields = {
 let emailCheckTimer = null;
 let emailCheckSequence = 0;
 let curriculumPreviewObjectUrl = null;
+let curriculumMobileEditorActive = false;
+let curriculumMobileEditorLoaded = false;
+let curriculumMobileEditorDirty = false;
+let curriculumMobileEditorOriginalText = '';
+let curriculumMobileEditorSaveTimer = null;
+let curriculumMobileEditorSavePromise = null;
+let curriculumMobileEditorLoadSequence = 0;
 let googleIdToken = '';
 let googleUserEmail = '';
 let isSubmitting = false;
@@ -484,18 +494,287 @@ async function submitForm(event) {
   }
 }
 
-function previewCurriculum() {
-  closeCurriculumPreview();
+function isMobileEditorViewport() {
+  return window.matchMedia('(max-width: 720px)').matches ||
+    window.matchMedia('(pointer: coarse)').matches ||
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
 
-  if (fields.curriculumFile.files && fields.curriculumFile.files.length > 0) {
+async function requestCurriculumEditor(action, payload = {}) {
+  const response = await fetch(GOOGLE_SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify({
+      ...payload,
+      action,
+      idToken: googleIdToken,
+    }),
+  });
+
+  let result;
+  try {
+    result = await response.json();
+  } catch (error) {
+    throw new Error('O servidor retornou uma resposta inválida ao editar o currículo.');
+  }
+
+  if (result.authRequired) {
+    signOutGoogleUser();
+  }
+  if (!response.ok || !result.ok) {
+    const requestError = new Error(result.error || 'Não foi possível atualizar o currículo.');
+    requestError.conflict = result.conflict === true;
+    throw requestError;
+  }
+
+  return result;
+}
+
+function isMobileEditorStyleActive(styleRanges, index) {
+  return (styleRanges || []).some((range) => index >= range[0] && index < range[1]);
+}
+
+function appendFormattedText(parent, text, start, styles) {
+  let cursor = 0;
+  while (cursor < text.length) {
+    const offset = start + cursor;
+    const activeStyles = {
+      bold: isMobileEditorStyleActive(styles.bold, offset),
+      italic: isMobileEditorStyleActive(styles.italic, offset),
+      underline: isMobileEditorStyleActive(styles.underline, offset),
+    };
+
+    let end = cursor + 1;
+    while (end < text.length) {
+      const nextOffset = start + end;
+      if (activeStyles.bold !== isMobileEditorStyleActive(styles.bold, nextOffset) ||
+          activeStyles.italic !== isMobileEditorStyleActive(styles.italic, nextOffset) ||
+          activeStyles.underline !== isMobileEditorStyleActive(styles.underline, nextOffset)) {
+        break;
+      }
+      end++;
+    }
+
+    let node = document.createTextNode(text.slice(cursor, end));
+    if (activeStyles.underline) {
+      const underline = document.createElement('u');
+      underline.appendChild(node);
+      node = underline;
+    }
+    if (activeStyles.italic) {
+      const italic = document.createElement('em');
+      italic.appendChild(node);
+      node = italic;
+    }
+    if (activeStyles.bold) {
+      const bold = document.createElement('strong');
+      bold.appendChild(node);
+      node = bold;
+    }
+    parent.appendChild(node);
+    cursor = end;
+  }
+}
+
+function renderMobileEditorContent(content) {
+  const styles = content.styles || { bold: [], italic: [], underline: [] };
+  const lines = content.text.split('\n');
+  let offset = 0;
+  curriculumMobileEditorContent.innerHTML = '';
+
+  lines.forEach((line) => {
+    const block = document.createElement('div');
+    if (line) {
+      appendFormattedText(block, line, offset, styles);
+    } else {
+      block.appendChild(document.createElement('br'));
+    }
+    curriculumMobileEditorContent.appendChild(block);
+    offset += line.length + 1;
+  });
+}
+
+function serializeMobileEditorContent() {
+  let text = '';
+  const styles = { bold: [], italic: [], underline: [] };
+
+  function appendStyleRange(style, start, end) {
+    if (start === end) return;
+    const ranges = styles[style];
+    const lastRange = ranges[ranges.length - 1];
+    if (lastRange && lastRange[1] === start) {
+      lastRange[1] = end;
+    } else {
+      ranges.push([start, end]);
+    }
+  }
+
+  function visit(node, inheritedStyles, isRoot = false) {
+    if (node.nodeType === 3) {
+      const value = node.nodeValue.replace(/\r\n?/g, '\n');
+      const start = text.length;
+      text += value;
+      Object.keys(inheritedStyles).forEach((style) => {
+        if (inheritedStyles[style]) {
+          appendStyleRange(style, start, text.length);
+        }
+      });
+      return;
+    }
+    if (node.nodeType !== 1) return;
+
+    const tag = node.tagName.toLowerCase();
+    if (tag === 'br') {
+      text += '\n';
+      return;
+    }
+
+    const styles = { ...inheritedStyles };
+    const inlineStyle = node.getAttribute('style') || '';
+    if (tag === 'b' || tag === 'strong' || /font-weight:\s*(bold|[6-9]00)/i.test(inlineStyle)) {
+      styles.bold = true;
+    }
+    if (tag === 'i' || tag === 'em' || /font-style:\s*italic/i.test(inlineStyle)) {
+      styles.italic = true;
+    }
+    if (tag === 'u' || /text-decoration(?:-line)?:[^;]*underline/i.test(inlineStyle)) {
+      styles.underline = true;
+    }
+
+    const isBlock = tag === 'div' || tag === 'p' || tag === 'li';
+    const isEmptyBlock = isBlock && node.childNodes.length === 1 &&
+      node.firstChild.nodeType === 1 && node.firstChild.tagName.toLowerCase() === 'br';
+    if (isBlock && !isRoot && text.length > 0 && !text.endsWith('\n')) {
+      text += '\n';
+    }
+    if (!isEmptyBlock) {
+      Array.from(node.childNodes).forEach((child) => visit(child, styles));
+    }
+    if (isBlock && !isRoot && text.length > 0 && !text.endsWith('\n')) {
+      text += '\n';
+    }
+  }
+
+  const topLevelNodes = Array.from(curriculumMobileEditorContent.childNodes);
+  topLevelNodes.forEach((node, index) => {
+    if (index > 0 && text.length > 0 && !text.endsWith('\n')) {
+      text += '\n';
+    }
+    visit(node, { bold: false, italic: false, underline: false }, true);
+  });
+
+  return { text, styles };
+}
+
+function setMobileEditorStatus(message) {
+  if (curriculumModalStatusEl) curriculumModalStatusEl.textContent = message;
+}
+
+async function loadMobileCurriculumEditor() {
+  const loadSequence = ++curriculumMobileEditorLoadSequence;
+  curriculumMobileEditorLoaded = false;
+  curriculumMobileEditorDirty = false;
+  curriculumMobileEditorContent.contentEditable = 'false';
+  curriculumMobileEditorContent.innerHTML = '';
+  setMobileEditorStatus('Carregando o currículo do Google Docs...');
+
+  try {
+    const result = await requestCurriculumEditor('getCurriculumEditorContent');
+    if (!curriculumMobileEditorActive || loadSequence !== curriculumMobileEditorLoadSequence) return;
+
+    curriculumMobileEditorOriginalText = result.text;
+    renderMobileEditorContent(result);
+    curriculumMobileEditorLoaded = true;
+    curriculumMobileEditorContent.contentEditable = 'true';
+    setMobileEditorStatus('Edite o texto. Negrito, itálico e sublinhado são salvos no mesmo documento do Drive.');
+  } catch (error) {
+    if (!curriculumMobileEditorActive || loadSequence !== curriculumMobileEditorLoadSequence) return;
+    setMobileEditorStatus(error.message || 'Não foi possível carregar o currículo para edição móvel.');
+  }
+}
+
+function scheduleMobileCurriculumSave() {
+  if (!curriculumMobileEditorLoaded) return;
+  curriculumMobileEditorDirty = true;
+  setMobileEditorStatus('Salvamento automático em andamento...');
+  clearTimeout(curriculumMobileEditorSaveTimer);
+  curriculumMobileEditorSaveTimer = setTimeout(saveMobileCurriculum, 1200);
+}
+
+async function saveMobileCurriculum() {
+  clearTimeout(curriculumMobileEditorSaveTimer);
+  curriculumMobileEditorSaveTimer = null;
+
+  if (curriculumMobileEditorSavePromise) {
+    return curriculumMobileEditorSavePromise;
+  }
+  if (!curriculumMobileEditorActive || !curriculumMobileEditorLoaded || !curriculumMobileEditorDirty) {
+    return true;
+  }
+
+  const content = serializeMobileEditorContent();
+  if (!content.text.trim()) {
+    setMobileEditorStatus('O currículo não pode ficar vazio.');
+    return false;
+  }
+
+  curriculumMobileEditorContent.contentEditable = 'false';
+  setMobileEditorStatus('Salvando alterações no Google Docs...');
+
+  curriculumMobileEditorSavePromise = (async () => {
+    try {
+      const result = await requestCurriculumEditor('saveCurriculumEditorContent', {
+        originalText: curriculumMobileEditorOriginalText,
+        text: content.text,
+        styles: content.styles,
+      });
+      curriculumMobileEditorOriginalText = result.text;
+      curriculumMobileEditorDirty = false;
+      setMobileEditorStatus('Alterações salvas no Google Docs.');
+      return true;
+    } catch (error) {
+      setMobileEditorStatus(error.conflict
+        ? 'O documento mudou em outra sessão. Feche e abra a edição móvel novamente antes de salvar.'
+        : error.message || 'Não foi possível salvar as alterações.');
+      return false;
+    } finally {
+      curriculumMobileEditorContent.contentEditable = 'true';
+    }
+  })();
+
+  const saved = await curriculumMobileEditorSavePromise;
+  curriculumMobileEditorSavePromise = null;
+  return saved;
+}
+
+async function previewCurriculum() {
+  const closed = await closeCurriculumPreview();
+  if (!closed) return;
+
+  const hasCustomFile = fields.curriculumFile.files && fields.curriculumFile.files.length > 0;
+  curriculumPreviewFrame.hidden = false;
+  curriculumMobileEditor.hidden = true;
+
+  if (hasCustomFile) {
+    curriculumMobileEditorActive = false;
     if (curriculumModalTitleEl) curriculumModalTitleEl.textContent = '📄 Pré-visualização do PDF personalizado';
     if (curriculumModalStatusEl) curriculumModalStatusEl.textContent = 'Este PDF personalizado está em modo de visualização.';
     curriculumPreviewObjectUrl = URL.createObjectURL(fields.curriculumFile.files[0]);
     curriculumPreviewFrame.src = curriculumPreviewObjectUrl;
   } else {
     if (curriculumModalTitleEl) curriculumModalTitleEl.textContent = '✏️ Editar currículo no Google Docs';
+    if (isMobileEditorViewport()) {
+      curriculumMobileEditorActive = true;
+      curriculumPreviewFrame.hidden = true;
+      curriculumMobileEditor.hidden = false;
+      curriculumModal.classList.add('active');
+      curriculumModal.setAttribute('aria-hidden', 'false');
+      await loadMobileCurriculumEditor();
+      return;
+    }
+
+    curriculumMobileEditorActive = false;
     if (curriculumModalStatusEl) {
-      curriculumModalStatusEl.textContent = 'Entre na sua conta Google para editar. As alterações são salvas automaticamente no Drive; aguarde “Alterações salvas no Drive” antes de fechar.';
+      curriculumModalStatusEl.textContent = 'As alterações são salvas automaticamente no Drive. Aguarde “Alterações salvas no Drive” antes de fechar.';
     }
     curriculumPreviewFrame.src = DRIVE_CURRICULUM_EDIT_URL;
   }
@@ -504,17 +783,35 @@ function previewCurriculum() {
   curriculumModal.setAttribute('aria-hidden', 'false');
 }
 
-function closeCurriculumPreview() {
-  if (!curriculumModal) return;
+async function closeCurriculumPreview() {
+  if (!curriculumModal) return true;
 
+  if (curriculumMobileEditorActive && curriculumMobileEditorDirty) {
+    const saved = await saveMobileCurriculum();
+    if (!saved && !window.confirm('Não foi possível salvar. Fechar e descartar as alterações móveis?')) {
+      return false;
+    }
+  }
+
+  clearTimeout(curriculumMobileEditorSaveTimer);
+  curriculumMobileEditorSaveTimer = null;
+  curriculumMobileEditorLoadSequence++;
+  curriculumMobileEditorActive = false;
+  curriculumMobileEditorLoaded = false;
+  curriculumMobileEditorDirty = false;
+  curriculumMobileEditorOriginalText = '';
   curriculumModal.classList.remove('active');
   curriculumModal.setAttribute('aria-hidden', 'true');
   curriculumPreviewFrame.src = 'about:blank';
+  curriculumPreviewFrame.hidden = false;
+  curriculumMobileEditor.hidden = true;
+  curriculumMobileEditorContent.innerHTML = '';
 
   if (curriculumPreviewObjectUrl) {
     URL.revokeObjectURL(curriculumPreviewObjectUrl);
     curriculumPreviewObjectUrl = null;
   }
+  return true;
 }
 
 function openEmailPreview() {
@@ -577,6 +874,29 @@ if (curriculumModalCloseBtn) {
 
 if (curriculumModalDoneBtn) {
   curriculumModalDoneBtn.addEventListener('click', closeCurriculumPreview);
+}
+
+if (curriculumMobileEditorContent) {
+  curriculumMobileEditorContent.addEventListener('input', scheduleMobileCurriculumSave);
+  curriculumMobileEditorContent.addEventListener('paste', (event) => {
+    if (!event.clipboardData) return;
+    event.preventDefault();
+    document.execCommand('insertText', false, event.clipboardData.getData('text/plain'));
+  });
+}
+
+if (curriculumMobileToolbar) {
+  curriculumMobileToolbar.addEventListener('pointerdown', (event) => {
+    const button = event.target.closest && event.target.closest('[data-editor-command]');
+    if (button) event.preventDefault();
+  });
+  curriculumMobileToolbar.addEventListener('click', (event) => {
+    const button = event.target.closest && event.target.closest('[data-editor-command]');
+    if (!button || !curriculumMobileEditorLoaded) return;
+    curriculumMobileEditorContent.focus({ preventScroll: true });
+    document.execCommand(button.dataset.editorCommand, false, null);
+    scheduleMobileCurriculumSave();
+  });
 }
 
 if (curriculumModal) {

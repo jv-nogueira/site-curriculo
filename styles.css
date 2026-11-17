@@ -546,6 +546,56 @@ button.secondary:hover {
   background: #f2f5fb;
 }
 
+.curriculum-mobile-editor {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  background: #f2f5fb;
+}
+
+.curriculum-mobile-editor[hidden],
+.curriculum-modal-card iframe[hidden] {
+  display: none;
+}
+
+.curriculum-mobile-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  background: #fff;
+}
+
+.curriculum-mobile-toolbar button {
+  width: 44px;
+  min-height: 40px;
+  padding: 6px;
+}
+
+.curriculum-mobile-editor-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 18px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  -webkit-overflow-scrolling: touch;
+  touch-action: manipulation;
+}
+
+.curriculum-mobile-editor-content:focus {
+  outline: 2px solid rgba(37, 99, 235, 0.35);
+  outline-offset: -2px;
+}
+
+.curriculum-mobile-editor-content > div {
+  min-height: 1.55em;
+}
+
 .curriculum-modal-footer {
   display: flex;
   align-items: center;
@@ -691,6 +741,13 @@ button.secondary:hover {
     width: 100%;
     height: 92vh;
     max-height: 92vh;
+  }
+
+  @supports (height: 100dvh) {
+    .curriculum-modal-card {
+      height: 92dvh;
+      max-height: 92dvh;
+    }
   }
 
   .curriculum-modal-footer {

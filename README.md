@@ -9,6 +9,7 @@ Este projeto disponibiliza uma interface web para preencher, personalizar e disp
 - **Prevenção de duplicados:** Consulta a coluna `B` da aba `Log` enquanto o e-mail é digitado e bloqueia o envio se ele já estiver registrado.
 - **Identificação do remetente:** Exige login com uma conta Google antes do envio e registra o e-mail verificado na coluna `D` (`Ator`) da aba `Log`.
 - **Currículo Google Docs:** Edita o currículo padrão no editor incorporado do Google Docs, que salva alterações diretamente no Drive; o envio exporta a versão atual para PDF. Também permite anexar PDFs personalizados.
+- **Edição móvel:** Em telas móveis, oferece edição de texto com negrito, itálico e sublinhado na modal, salvando no mesmo Google Docs. O editor móvel atende documentos compostos por parágrafos/listas; não edita tabelas, imagens ou objetos incorporados.
 - **Tags Dinâmicas:** Substitui automaticamente `[saudacao]` (bom dia/boa tarde/boa noite), `[primeiroNome]` e `[nomeCompleto]`.
 - **Armazenamento de Rascunho:** Salva alterações no `localStorage` do navegador para evitar perda de dados.
 
@@ -30,7 +31,7 @@ Este projeto disponibiliza uma interface web para preencher, personalizar e disp
 6. Configure o ID do Google Docs padrão na constante `DEFAULT_CURRICULUM_DOC_ID` em [`script.js`](script.js) e [`apps-script.gs`](apps-script.gs). O documento precisa permitir edição para as pessoas que usarão o editor incorporado; com acesso de editor para qualquer pessoa com o link, visitantes do site também poderão alterar o documento.
 7. Abra a sua planilha do Google Sheets e vá em **Extensões > Apps Script**.
 8. Copie o conteúdo do arquivo [`apps-script.gs`](apps-script.gs) e cole no editor do Apps Script (substituindo o conteúdo existente).
-9. Salve o projeto (`Ctrl + S`) e execute `autorizarGmail` no editor para conceder as permissões solicitadas, incluindo acesso ao Google Drive e a chamada externa necessária para validar o login Google.
+9. Salve o projeto (`Ctrl + S`) e execute `autorizarGmail` no editor para conceder as permissões solicitadas, incluindo acesso ao Google Drive, Google Docs e a chamada externa necessária para validar o login Google.
 10. Clique em **Implantar > Gerenciar implantações** (ou **Nova implantação**):
    - Tipo: **App da Web** (Web App)
    - Executar como: **Eu (seu e-mail)**

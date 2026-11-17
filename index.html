@@ -145,6 +145,14 @@
           <button type="button" class="modal-close-btn" id="curriculum-modal-close" aria-label="Fechar">&times;</button>
         </div>
         <iframe id="curriculum-preview-frame" title="Editor de currículo no Google Docs"></iframe>
+        <div id="curriculum-mobile-editor" class="curriculum-mobile-editor" hidden>
+          <div class="curriculum-mobile-toolbar" role="toolbar" aria-label="Formatação do currículo">
+            <button type="button" class="secondary" data-editor-command="bold" aria-label="Negrito"><strong>N</strong></button>
+            <button type="button" class="secondary" data-editor-command="italic" aria-label="Itálico"><em>I</em></button>
+            <button type="button" class="secondary" data-editor-command="underline" aria-label="Sublinhado"><u>S</u></button>
+          </div>
+          <div id="curriculum-mobile-editor-content" class="curriculum-mobile-editor-content" contenteditable="true" role="textbox" aria-label="Conteúdo do currículo" aria-multiline="true" spellcheck="true"></div>
+        </div>
         <div class="curriculum-modal-footer">
           <p id="curriculum-modal-status">As alterações são salvas automaticamente no Drive. Aguarde “Alterações salvas no Drive” antes de fechar.</p>
           <button type="button" class="secondary" id="curriculum-modal-done">Fechar prévia</button>
