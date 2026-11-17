@@ -19,12 +19,12 @@ Atenciosamente,
 João Vitor Nogueira
 (11) 9 7776-8397`;
 
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbydQoXbdS7yaTBIU9TTbEIyuUVma_JSZ2HNe8d-7XvzZPrYfhN8pxQeQaouDdwcCq03GA/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxN4n23X-D4fDlj3bqUxtBSsWfDcUoDGsv74KdhtmGpJZw2LXzQ3PBaKkYD7dQTbdhMbg/exec';
 const GOOGLE_CLIENT_ID = '973715238698-dr99ku9cfh5r1lt7tq9jvi2fem1ea5r7.apps.googleusercontent.com';
-const DRIVE_CURRICULUM_VIEW_URL = 'https://drive.google.com/file/d/17sVYzFS58asczdof5QV_WAIEgYSLD8Rd/view';
-const DRIVE_CURRICULUM_PREVIEW_URL = DRIVE_CURRICULUM_VIEW_URL.replace(/\/view(?:\?.*)?$/, '/preview');
+const DEFAULT_CURRICULUM_DOC_ID = '15cjLjTyhnVahdKCbVbko_2KpQwgg_k6UgiMwEB4tC64';
+const DRIVE_CURRICULUM_EDIT_URL = `https://docs.google.com/document/d/${DEFAULT_CURRICULUM_DOC_ID}/edit?embedded=true`;
 const DEFAULT_CURRICULUM_NAME = 'JoaoVitorNogueira.pdf';
-const DEFAULT_CURRICULUM_PATH = './JoaoVitor.pdf';
+const DEFAULT_CURRICULUM_DISPLAY_NAME = 'JoaoVitorNogueira (Google Docs)';
 
 const form = document.getElementById('mail-form');
 const statusBox = document.getElementById('status');
@@ -45,6 +45,9 @@ const fileBadgeEl = document.getElementById('file-badge');
 const emailModal = document.getElementById('email-modal');
 const curriculumModal = document.getElementById('curriculum-modal');
 const curriculumModalCloseBtn = document.getElementById('curriculum-modal-close');
+const curriculumModalDoneBtn = document.getElementById('curriculum-modal-done');
+const curriculumModalTitleEl = document.getElementById('curriculum-modal-title');
+const curriculumModalStatusEl = document.getElementById('curriculum-modal-status');
 const curriculumPreviewFrame = document.getElementById('curriculum-preview-frame');
 const modalCloseBtn = document.getElementById('modal-close');
 const modalCancelBtn = document.getElementById('modal-cancel-btn');
@@ -280,11 +283,17 @@ function updateCurriculumDisplay() {
       fileBadgeEl.className = 'file-badge custom';
     }
   } else {
-    if (selectedFileNameEl) selectedFileNameEl.textContent = DEFAULT_CURRICULUM_NAME;
+    if (selectedFileNameEl) selectedFileNameEl.textContent = DEFAULT_CURRICULUM_DISPLAY_NAME;
     if (fileBadgeEl) {
       fileBadgeEl.textContent = 'Padrão';
       fileBadgeEl.className = 'file-badge';
     }
+  }
+
+  if (previewCurriculumButton) {
+    const hasCustomFile = fields.curriculumFile.files && fields.curriculumFile.files.length > 0;
+    previewCurriculumButton.textContent = hasCustomFile ? '👁️ Visualizar PDF' : '✏️ Editar currículo';
+    previewCurriculumButton.title = hasCustomFile ? 'Visualizar PDF personalizado' : 'Editar currículo no Google Docs';
   }
 }
 
@@ -417,16 +426,6 @@ async function submitForm(event) {
     if (fields.curriculumFile.files && fields.curriculumFile.files.length > 0) {
       base64Data = await fileToBase64(fields.curriculumFile.files[0]);
       fileName = fields.curriculumFile.files[0].name;
-    } else {
-      try {
-        const fileResp = await fetch(DEFAULT_CURRICULUM_PATH);
-        if (fileResp.ok) {
-          const blob = await fileResp.blob();
-          base64Data = await fileToBase64(blob);
-        }
-      } catch (e) {
-        console.warn('Não foi possível codificar o PDF local:', e);
-      }
     }
 
     const requestData = {
@@ -489,10 +488,16 @@ function previewCurriculum() {
   closeCurriculumPreview();
 
   if (fields.curriculumFile.files && fields.curriculumFile.files.length > 0) {
+    if (curriculumModalTitleEl) curriculumModalTitleEl.textContent = '📄 Pré-visualização do PDF personalizado';
+    if (curriculumModalStatusEl) curriculumModalStatusEl.textContent = 'Este PDF personalizado está em modo de visualização.';
     curriculumPreviewObjectUrl = URL.createObjectURL(fields.curriculumFile.files[0]);
     curriculumPreviewFrame.src = curriculumPreviewObjectUrl;
   } else {
-    curriculumPreviewFrame.src = DRIVE_CURRICULUM_PREVIEW_URL;
+    if (curriculumModalTitleEl) curriculumModalTitleEl.textContent = '✏️ Editar currículo no Google Docs';
+    if (curriculumModalStatusEl) {
+      curriculumModalStatusEl.textContent = 'Entre na sua conta Google para editar. As alterações são salvas automaticamente no Drive; aguarde “Alterações salvas no Drive” antes de fechar.';
+    }
+    curriculumPreviewFrame.src = DRIVE_CURRICULUM_EDIT_URL;
   }
 
   curriculumModal.classList.add('active');
@@ -568,6 +573,10 @@ if (previewCurriculumButton) {
 
 if (curriculumModalCloseBtn) {
   curriculumModalCloseBtn.addEventListener('click', closeCurriculumPreview);
+}
+
+if (curriculumModalDoneBtn) {
+  curriculumModalDoneBtn.addEventListener('click', closeCurriculumPreview);
 }
 
 if (curriculumModal) {

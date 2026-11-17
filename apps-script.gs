@@ -7,8 +7,8 @@
  * 3. Garanta que o acesso esteja como: "Qualquer pessoa" (Anyone).
  */
 
-const DRIVE_FOLDER_ID = '1OihWDBRijrK0tl9N9rTlKiTqUJq2eZg1';
-const TARGET_FILE_NAME = 'JoaoVitorNogueira.pdf';
+const DEFAULT_CURRICULUM_DOC_ID = '15cjLjTyhnVahdKCbVbko_2KpQwgg_k6UgiMwEB4tC64';
+const DEFAULT_CURRICULUM_PDF_NAME = 'JoaoVitorNogueira.pdf';
 const GOOGLE_CLIENT_ID = '973715238698-dr99ku9cfh5r1lt7tq9jvi2fem1ea5r7.apps.googleusercontent.com';
 
 function autorizarGmail() {
@@ -18,11 +18,7 @@ function autorizarGmail() {
     'https://oauth2.googleapis.com/tokeninfo?id_token=authorization-check',
     { muteHttpExceptions: true }
   );
-  try {
-    DriveApp.getFolderById(DRIVE_FOLDER_ID);
-  } catch (e) {
-    Logger.log('DriveApp autorizado: ' + e);
-  }
+  DriveApp.getFileById(DEFAULT_CURRICULUM_DOC_ID).getName();
   Logger.log('Permissões concedidas com sucesso!');
 }
 
@@ -128,57 +124,21 @@ function cleanEmailList(emailString) {
     .join(',');
 }
 
-/**
- * Busca o arquivo de currículo na pasta do Google Drive:
- * 1º Tenta pelo nome exato (TARGET_FILE_NAME).
- * 2º Se não achar, pega o PDF mais recente da pasta.
- */
-function getCurriculumFromFolder() {
-  try {
-    const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
-    
-    // 1. Tenta buscar pelo nome específico
-    const namedFiles = folder.getFilesByName(TARGET_FILE_NAME);
-    if (namedFiles.hasNext()) {
-      return namedFiles.next();
-    }
-
-    // 2. Se não encontrar pelo nome exato, pega o PDF mais recente da pasta
-    const pdfFiles = folder.getFilesByType(MimeType.PDF);
-    let latestFile = null;
-    let latestTime = 0;
-    
-    while (pdfFiles.hasNext()) {
-      const file = pdfFiles.next();
-      if (file.getLastUpdated().getTime() > latestTime) {
-        latestTime = file.getLastUpdated().getTime();
-        latestFile = file;
-      }
-    }
-
-    if (latestFile) {
-      return latestFile;
-    }
-
-    // 3. Se não houver PDF, tenta qualquer arquivo da pasta
-    const allFiles = folder.getFiles();
-    if (allFiles.hasNext()) {
-      return allFiles.next();
-    }
-
-    throw new Error('Nenhum arquivo de currículo encontrado na pasta do Google Drive.');
-  } catch (error) {
-    throw new Error('Erro ao acessar pasta do Google Drive: ' + error.toString());
+function getDefaultCurriculumFile() {
+  const file = DriveApp.getFileById(DEFAULT_CURRICULUM_DOC_ID);
+  if (file.getMimeType() !== MimeType.GOOGLE_DOCS) {
+    throw new Error('O arquivo de currículo configurado não é um documento Google Docs.');
   }
+  return file;
 }
 
 function testarEnvioComAnexo() {
-  const file = getCurriculumFromFolder();
+  const file = getDefaultCurriculumFile();
   Logger.log('1. Arquivo encontrado: ' + file.getName());
   Logger.log('2. ID do arquivo: ' + file.getId());
   
   const blob = file.getAs(MimeType.PDF);
-  blob.setName(file.getName());
+  blob.setName(DEFAULT_CURRICULUM_PDF_NAME);
   
   const meuEmail = Session.getActiveUser().getEmail();
   Logger.log('3. Enviando e-mail de teste para: ' + meuEmail);
@@ -223,7 +183,7 @@ function sendApplicationEmail(payload) {
   if (payload.fileData) {
     try {
       const decoded = Utilities.base64Decode(payload.fileData);
-      const fileName = payload.fileName || 'JoaoVitor.pdf';
+      const fileName = payload.fileName || DEFAULT_CURRICULUM_PDF_NAME;
       const mimeType = payload.fileMimeType || 'application/pdf';
       const attachment = Utilities.newBlob(decoded, mimeType, fileName);
       options.attachments = [attachment];
@@ -231,13 +191,12 @@ function sendApplicationEmail(payload) {
       Logger.log('Erro ao anexar arquivo personalizado: ' + err);
     }
   } else {
-    // 2. Caso contrário, puxa o currículo dinamicamente da pasta do Google Drive
+    // 2. Caso contrário, exporta o documento Google Docs padrão como PDF
     try {
-      const driveFile = getCurriculumFromFolder();
+      const driveFile = getDefaultCurriculumFile();
       
-      // Apagamos o getBlob() anterior e deixamos apenas a conversão direta para PDF
-      const blob = driveFile.getAs(MimeType.PDF); 
-      blob.setName(driveFile.getName());
+      const blob = driveFile.getAs(MimeType.PDF);
+      blob.setName(DEFAULT_CURRICULUM_PDF_NAME);
       
       options.attachments = [blob];
     } catch (err) {
@@ -253,10 +212,10 @@ function doGet(e) {
   const event = e || {};
   const params = event.parameter || {};
 
-  // Redireciona para o arquivo de currículo da pasta para visualização
+  // Redireciona para o documento padrão no Google Drive
   if (params.action === 'preview') {
     try {
-      const file = getCurriculumFromFolder();
+      const file = getDefaultCurriculumFile();
       const viewUrl = file.getUrl();
       return HtmlService.createHtmlOutput(
         `<script>window.location.href = "${viewUrl}";</script>` +
